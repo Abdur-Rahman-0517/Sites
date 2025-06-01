@@ -14,6 +14,8 @@
       --background: #f5f7fa;
       --dark: #1a1a1a;
       --light: #ffffff;
+      --highlight: #ffcc00;
+      --soft-blue: #4c9fff;
     }
 
     * {
@@ -31,10 +33,11 @@
     }
 
     header {
-      background: linear-gradient(145deg, var(--primary), var(--secondary));
+      background: linear-gradient(145deg, var(--primary), var(--soft-blue));
       color: var(--light);
       padding: 5rem 1rem 4rem;
       text-align: center;
+      border-bottom: 10px solid var(--highlight);
     }
 
     header h1 {
@@ -47,6 +50,7 @@
       opacity: 0.95;
       max-width: 720px;
       margin: 0 auto;
+      color: var(--highlight);
     }
 
     nav {
@@ -71,6 +75,7 @@
 
     nav a:hover {
       color: var(--primary);
+      text-decoration: underline;
     }
 
     .container {
@@ -115,6 +120,7 @@
       padding: 2.2rem;
       text-align: center;
       transition: transform 0.3s, box-shadow 0.3s;
+      border: 2px solid var(--primary);
     }
 
     .project-card:hover {
@@ -125,6 +131,7 @@
     .project-card h3 {
       color: var(--primary);
       font-size: 1.9rem;
+      text-transform: uppercase;
     }
 
     .project-card p {
@@ -181,11 +188,10 @@
       <div class="projects-grid">
         <div class="project-card">
           <h3>Tic Tac Toe</h3>
-          <p>A fun classic game with a bot never loses.</p>
+          <p>A fun classic game with a bot that never loses.</p>
           <a href="Games/Tic-Tac-Toe">Play Now</a>
         </div>
         
-        </div>
       </div>
     </section>
   </div>
