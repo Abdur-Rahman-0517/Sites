@@ -1,0 +1,361 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Abdur Rahman's Clock</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            transition: background 0.5s ease;
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            position: relative;
+        }
+
+        .menu-icon {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            cursor: pointer;
+            font-size: 24px;
+            z-index: 100;
+        }
+
+        .settings-menu {
+            position: absolute;
+            top: 40px;
+            right: 10px;
+            background: white;
+            color: black;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+            display: none;
+            z-index: 100;
+            padding: 10px;
+        }
+
+        .settings-menu ul {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        .settings-menu li {
+            padding: 10px;
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
+
+        .settings-menu li:hover {
+            background: #ddd;
+        }
+
+        .clock-container {
+            text-align: center;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.3);
+        }
+
+        .time {
+            font-size: 80px;
+            font-weight: bold;
+        }
+
+        .date {
+            font-size: 30px;
+        }
+
+        .greeting {
+            font-size: 20px;
+            margin-top: 20px;
+        }
+
+        .analog-clock {
+            position: relative;
+            width: 200px;
+            height: 200px;
+            border: 10px solid white;
+            border-radius: 50%;
+            margin: 20px auto;
+            background: transparent;
+        }
+
+        .analog-clock .number {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            text-align: center;
+            line-height: 30px;
+            font-size: 18px;
+            color: white;
+            transform: translate(-50%, -50%);
+        }
+
+        .analog-clock .hour,
+        .analog-clock .minute,
+        .analog-clock .second {
+            position: absolute;
+            bottom: 50%;
+            left: 50%;
+            transform-origin: 50% 100%;
+            transform: translateX(-50%);
+        }
+
+        .hour {
+            width: 6px;
+            height: 50px;
+            background-color: #ff6347;
+        }
+
+        .minute {
+            width: 4px;
+            height: 70px;
+            background-color: #32cd32;
+        }
+
+        .second {
+            width: 2px;
+            height: 80px;
+            background-color: #00bfff;
+        }
+
+        .background-settings {
+            margin-top: 20px;
+            text-align: left;
+            color: black;
+        }
+
+        .background-settings label {
+            margin-right: 10px;
+        }
+
+        .background-settings input[type="range"] {
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+    <div class="menu-icon" id="menuIcon">⋮</div>
+    <div class="settings-menu" id="settingsMenu">
+        <ul>
+            <li id="defaultTheme">Default Theme</li>
+            <li id="customTheme">Custom Theme</li>
+            <li id="customizeBackground">Customize Background</li>
+        </ul>
+        <div class="background-settings" id="backgroundSettings" style="display: none;">
+            <label for="posX">Position X: </label>
+            <input type="range" id="posX" min="-100" max="100" value="0">
+            <label for="posY">Position Y: </label>
+            <input type="range" id="posY" min="-100" max="100" value="0">
+            <label for="zoom">Zoom: </label>
+            <input type="range" id="zoom" min="50" max="200" value="100">
+        </div>
+    </div>
+
+    <div class="clock-container">
+        <div class="time" id="time"></div>
+        <div class="date" id="date"></div>
+        <div class="greeting" id="greeting"></div>
+        <div class="analog-clock" id="analogClock"></div>
+    </div>
+
+    <script>
+        const defaultTheme = () => {
+            const now = new Date();
+            const hour24 = now.getHours();
+            const greetingElement = document.getElementById('greeting');
+
+            if (hour24 >= 4 && hour24 < 12) {
+                greetingElement.textContent = 'Good Morning!';
+                document.body.style.background = 'linear-gradient(to bottom, #FFB6C1, #FFD700, #FFFFFF)';
+            } else if (hour24 >= 12 && hour24 < 18) {
+                greetingElement.textContent = 'Good Afternoon!';
+                document.body.style.background = 'linear-gradient(to bottom, #FF8C00, #FFFF99)';
+            } else if (hour24 >= 18 && hour24 <= 20) {
+                greetingElement.textContent = 'Good Evening!';
+                document.body.style.background = 'linear-gradient(to bottom, #FF1493, #ADD8E6)';
+            } else {
+                greetingElement.textContent = 'Good Night!';
+                document.body.style.background = 'linear-gradient(to bottom, #00008B, #F0FFF0)';
+            }
+        };
+
+        const applyTheme = () => {
+            const themeType = localStorage.getItem('themeType');
+            if (themeType === 'default') {
+                defaultTheme();
+            } else if (themeType === 'custom') {
+                const savedTheme = localStorage.getItem('backgroundImage');
+                const posX = localStorage.getItem('backgroundPosX') || 0;
+                const posY = localStorage.getItem('backgroundPosY') || 0;
+                const zoom = localStorage.getItem('backgroundZoom') || 100;
+
+                if (savedTheme) {
+                    document.body.style.backgroundImage = `url(${savedTheme})`;
+                    document.body.style.backgroundPosition = `${posX}% ${posY}%`;
+                    document.body.style.backgroundSize = `${zoom}%`;
+                }
+            }
+        };
+
+        document.getElementById('defaultTheme').addEventListener('click', () => {
+            localStorage.setItem('themeType', 'default');
+            applyTheme();
+        });
+
+        document.getElementById('customTheme').addEventListener('click', () => {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'image/*';
+            input.onchange = (event) => {
+                const file = event.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function (e) {
+                        const imageUrl = e.target.result;
+                        localStorage.setItem('themeType', 'custom');
+                        localStorage.setItem('backgroundImage', imageUrl);
+
+                        // Set the background image directly
+                        document.body.style.backgroundImage = `url(${imageUrl})`;
+                        document.body.style.backgroundSize = 'cover';
+                        document.body.style.backgroundPosition = 'center';
+
+                        // Reset sliders
+                        document.getElementById('posX').value = 0;
+                        document.getElementById('posY').value = 0;
+                        document.getElementById('zoom').value = 100;
+                    };
+                    reader.readAsDataURL(file);
+                }
+            };
+            input.click();
+        });
+
+        document.getElementById('customizeBackground').addEventListener('click', () => {
+            document.getElementById('backgroundSettings').style.display = 'block';
+        });
+
+        // Update background settings
+        document.getElementById('posX').addEventListener('input', (event) => {
+            const posX = event.target.value;
+            document.body.style.backgroundPosition = `${posX}% ${document.getElementById('posY').value}%`;
+            localStorage.setItem('backgroundPosX', posX);
+        });
+
+        document.getElementById('posY').addEventListener('input', (event) => {
+            const posY = event.target.value;
+            document.body.style.backgroundPosition = `${document.getElementById('posX').value}% ${posY}%`;
+            localStorage.setItem('backgroundPosY', posY);
+        });
+
+        document.getElementById('zoom').addEventListener('input', (event) => {
+            const zoom = event.target.value;
+            document.body.style.backgroundSize = `${zoom}%`;
+            localStorage.setItem('backgroundZoom', zoom);
+        });
+
+        const toggleMenu = () => {
+            const menu = document.getElementById('settingsMenu');
+            menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+        };
+
+        const hideMenuIfClickedOutside = (event) => {
+            const menu = document.getElementById('settingsMenu');
+            if (!menu.contains(event.target) && event.target !== document.getElementById('menuIcon')) {
+                menu.style.display = 'none';
+            }
+        };
+
+        document.getElementById('menuIcon').addEventListener('click', toggleMenu);
+        document.addEventListener('click', hideMenuIfClickedOutside);
+
+        // Initialize theme on page load
+        applyTheme();
+
+        // Clock logic with AM/PM
+        const updateClock = () => {
+            const now = new Date();
+            let hours = now.getHours();
+            const minutes = now.getMinutes().toString().padStart(2, '0');
+            const seconds = now.getSeconds().toString().padStart(2, '0');
+            const ampm = hours >= 12 ? 'PM' : 'AM';
+
+            hours = hours % 12;
+            hours = hours ? hours : 12; // 12 is used for 12 AM/PM
+            document.getElementById('time').textContent = `${hours}:${minutes}:${seconds} ${ampm}`;
+
+            const day = now.toLocaleString('en-US', { weekday: 'long' });
+            const month = now.toLocaleString('en-US', { month: 'long' });
+            const date = now.getDate();
+            const year = now.getFullYear();
+            document.getElementById('date').textContent = `${day}, ${month} ${date}, ${year}`;
+        };
+
+        setInterval(updateClock, 1000);
+
+        // Analog clock
+        function createClockNumbers() {
+            const clock = document.getElementById('analogClock');
+            for (let i = 1; i <= 12; i++) {
+                const angle = (i * 30) * (Math.PI / 180); // Convert degrees to radians
+                const x = 50 + 40 * Math.sin(angle); // 50 is center, 40 is radius
+                const y = 50 - 40 * Math.cos(angle); // Subtract to invert y-axis
+
+                const number = document.createElement('div');
+                number.className = 'number';
+                number.style.left = `${x}%`;
+                number.style.top = `${y}%`;
+                number.textContent = i;
+                clock.appendChild(number);
+            }
+
+            // Create clock hands
+            const hourHand = document.createElement('div');
+            hourHand.id = 'hourHand';
+            hourHand.className = 'hour';
+            clock.appendChild(hourHand);
+
+            const minuteHand = document.createElement('div');
+            minuteHand.id = 'minuteHand';
+            minuteHand.className = 'minute';
+            clock.appendChild(minuteHand);
+
+            const secondHand = document.createElement('div');
+            secondHand.id = 'secondHand';
+            secondHand.className = 'second';
+            clock.appendChild(secondHand);
+        }
+
+        createClockNumbers();
+
+        const updateAnalogClock = () => {
+            const now = new Date();
+            const hours = now.getHours() % 12;
+            const minutes = now.getMinutes();
+            const seconds = now.getSeconds();
+
+            const hourDeg = (hours + minutes / 60) * 30; // 360 degrees / 12 hours
+            const minuteDeg = (minutes + seconds / 60) * 6; // 360 degrees / 60 minutes
+            const secondDeg = seconds * 6; // 360 degrees / 60 seconds
+
+            document.querySelector('.hour').style.transform = `rotate(${hourDeg}deg)`;
+            document.querySelector('.minute').style.transform = `rotate(${minuteDeg}deg)`;
+            document.querySelector('.second').style.transform = `rotate(${secondDeg}deg)`;
+        };
+
+        setInterval(updateAnalogClock, 1000);
+    </script>
+</body>
+</html>
