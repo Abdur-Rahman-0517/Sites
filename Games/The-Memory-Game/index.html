@@ -83,45 +83,13 @@
     <div id="game-board"></div>
 
     <script>
-        // Random emoji selection
+        // Complex emoji selection
         const emojis = [
-  "🐶", // Dog
-  "🐱", // Cat
-  "🐭", // Mouse
-  "🐹", // Hamster
-  "🐰", // Rabbit
-  "🦊", // Fox
-  "🐻", // Bear
-  "🐼", // Panda
-  "🦁", // Lion
-  "🐮", // Cow
-  "🐷", // Pig
-  "🐸", // Frog
-  "🐵", // Monkey
-  "🐔", // Chicken
-  "🐧", // Penguin
-  "🐦", // Bird
-  "🐨", // Koala
-  "🐯", // Tiger
-  "🦓", // Zebra
-  "🦒", // Giraffe
-  "🐴", // Horse
-  "🐗", // Boar
-  "🐺", // Wolf
-  "🐢", // Turtle
-  "🐍", // Snake
-  "🦎", // Lizard
-  "🦖", // T-Rex
-  "🦥", // Sloth
-  "🦔", // Hedgehog
-  "🐙", // Octopus
-  "🦑", // Squid
-  "🐡", // Blowfish
-  "🐬", // Dolphin
-  "🦈", // Shark
-  "🐫", // Camel
-  "🐿️"  // Chipmunk
-];
+            "🐶", "🐱", "🐭", "🐹", "🐰", "🦊", "🐻", "🐼", "🦁", "🐮", 
+            "🐷", "🐸", "🐵", "🐔", "🐧", "🐦", "🐨", "🐯", "🦓", "🦒", 
+            "🐴", "🐗", "🐺", "🐢", "🐍", "🦎", "🦖", "🦥", "🦔", "🐙", 
+            "🦑", "🐡", "🐬", "🦈", "🐫", "🐿️"
+        ];
 
         let gameEmojis = [];
         let flippedCards = [];
@@ -136,15 +104,21 @@
         const timerDisplay = document.getElementById('timer');
         const restartBtn = document.getElementById('restart-btn');
 
-        // Generate random emoji pairs
+        // More complex randomizing of emojis
         function generateEmojis() {
+            // Generate a list of emojis, shuffling and adding randomness
             const shuffled = [...emojis].sort(() => 0.5 - Math.random());
             gameEmojis = shuffled.slice(0, 8).concat(shuffled.slice(0, 8));
             shuffleCards();
         }
 
-        // Shuffle cards
+        // Shuffle cards with an additional randomization step (Fisher-Yates Algorithm + randomize twice)
         function shuffleCards() {
+            for (let i = gameEmojis.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [gameEmojis[i], gameEmojis[j]] = [gameEmojis[j], gameEmojis[i]];
+            }
+            // Further randomization by shuffling the array once more
             for (let i = gameEmojis.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
                 [gameEmojis[i], gameEmojis[j]] = [gameEmojis[j], gameEmojis[i]];
