@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Pixel Resizer</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6; /* Light gray background */
+        }
+        /* Custom styles for subtle focus rings and shadow */
+        .focus-ring {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.5); /* Blue focus ring */
+        }
+        .btn-shadow:hover {
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen p-4 sm:p-6 bg-gray-100">
+    <div class="bg-white p-6 sm:p-8 rounded-lg shadow-xl max-w-lg w-full transform transition-all duration-300 ease-in-out hover:scale-[1.01]">
+        <h1 class="text-3xl font-bold text-center text-gray-800 mb-6">Image Pixel Resizer</h1>
+
+        <div class="mb-4">
+            <label for="imageUpload" class="block text-sm font-medium text-gray-700 mb-2">Upload Image:</label>
+            <input type="file" id="imageUpload" accept="image/*" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition-all duration-200">
+            <p id="fileNameDisplay" class="text-sm text-gray-500 mt-1"></p>
+        </div>
+
+        <div class="flex flex-col sm:flex-row gap-4 mb-6">
+            <div class="flex-1">
+                <label for="newWidth" class="block text-sm font-medium text-gray-700 mb-2">New Width (px):</label>
+                <input type="number" id="newWidth" placeholder="e.g., 1024" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition-all duration-200">
+            </div>
+            <div class="flex-1">
+                <label for="newHeight" class="block text-sm font-medium text-gray-700 mb-2">New Height (px):</label>
+                <input type="number" id="newHeight" placeholder="e.g., 768" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition-all duration-200">
+            </div>
+        </div>
+
+        <button id="resizeBtn" class="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors duration-200 focus-ring btn-shadow disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+            Resize Image
+        </button>
+
+        <p id="errorMessage" class="text-red-500 text-sm mt-3 text-center hidden"></p>
+
+        <div id="outputSection" class="mt-8 pt-6 border-t border-gray-200 hidden">
+            <h2 class="text-2xl font-semibold text-gray-800 mb-4 text-center">Result</h2>
+            <div class="flex justify-center mb-6">
+                <img id="previewImage" src="" alt="Resized Image Preview" class="max-w-full h-auto rounded-lg shadow-md border border-gray-200" style="max-height: 300px;">
+            </div>
+            <div class="flex justify-center">
+                <a id="downloadLink" download="resized_image.png" class="inline-block bg-green-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-green-700 transition-colors duration-200 focus-ring btn-shadow text-center">
+                    Download Resized Image
+                </a>
+            </div>
+        </div>
+
+        <!-- Hidden Canvas for Image Manipulation -->
+        <canvas id="imageCanvas" class="hidden"></canvas>
+    </div>
+
+    <script>
+        // Get DOM elements
+        const imageUpload = document.getElementById('imageUpload');
+        const fileNameDisplay = document.getElementById('fileNameDisplay');
+        const newWidthInput = document.getElementById('newWidth');
+        const newHeightInput = document.getElementById('newHeight');
+        const resizeBtn = document.getElementById('resizeBtn');
+        const errorMessage = document.getElementById('errorMessage');
+        const outputSection = document.getElementById('outputSection');
+        const previewImage = document.getElementById('previewImage');
+        const downloadLink = document.getElementById('downloadLink');
+        const imageCanvas = document.getElementById('imageCanvas');
+        const ctx = imageCanvas.getContext('2d');
+
+        let uploadedImage = null; // Stores the original Image object
+
+        // Function to display error messages
+        function showMessage(message, isError = true) {
+            errorMessage.textContent = message;
+            errorMessage.classList.remove('hidden');
+            if (isError) {
+                errorMessage.classList.add('text-red-500');
+                errorMessage.classList.remove('text-green-500');
+            } else {
+                errorMessage.classList.add('text-green-500');
+                errorMessage.classList.remove('text-red-500');
+            }
+        }
+
+        // Function to clear messages
+        function clearMessage() {
+            errorMessage.textContent = '';
+            errorMessage.classList.add('hidden');
+        }
+
+        // Event listener for image file upload
+        imageUpload.addEventListener('change', (event) => {
+            clearMessage();
+            outputSection.classList.add('hidden'); // Hide output section on new upload
+
+            const file = event.target.files[0];
+
+            if (!file) {
+                uploadedImage = null;
+                fileNameDisplay.textContent = '';
+                resizeBtn.disabled = true;
+                return;
+            }
+
+            fileNameDisplay.textContent = `Selected: ${file.name}`;
+
+            if (!file.type.startsWith('image/')) {
+                showMessage('Please upload a valid image file (e.g., JPG, PNG).');
+                uploadedImage = null;
+                resizeBtn.disabled = true;
+                return;
+            }
+
+            const reader = new FileReader();
+
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    uploadedImage = img;
+                    // Pre-fill dimensions with original image dimensions
+                    newWidthInput.value = img.width;
+                    newHeightInput.value = img.height;
+                    resizeBtn.disabled = false; // Enable resize button
+                };
+                img.onerror = () => {
+                    showMessage('Could not load image. Please try again.');
+                    uploadedImage = null;
+                    resizeBtn.disabled = true;
+                };
+                img.src = e.target.result;
+            };
+
+            reader.onerror = () => {
+                showMessage('Error reading file. Please try again.');
+                uploadedImage = null;
+                resizeBtn.disabled = true;
+            };
+
+            reader.readAsDataURL(file);
+        });
+
+        // Event listener for resize button click
+        resizeBtn.addEventListener('click', () => {
+            clearMessage();
+            if (!uploadedImage) {
+                showMessage('Please upload an image first.');
+                return;
+            }
+
+            const newWidth = parseInt(newWidthInput.value, 10);
+            const newHeight = parseInt(newHeightInput.value, 10);
+
+            // Validate inputs
+            if (isNaN(newWidth) || newWidth <= 0 || isNaN(newHeight) || newHeight <= 0) {
+                showMessage('Please enter valid positive numbers for both width and height.');
+                return;
+            }
+
+            // Set canvas dimensions
+            imageCanvas.width = newWidth;
+            imageCanvas.height = newHeight;
+
+            // Clear canvas and draw the resized image
+            ctx.clearRect(0, 0, newWidth, newHeight);
+            ctx.drawImage(uploadedImage, 0, 0, newWidth, newHeight);
+
+            // Get the data URL of the resized image from the canvas
+            const resizedImageDataUrl = imageCanvas.toDataURL('image/png'); // You can change to 'image/jpeg' if preferred
+
+            // Update preview image and download link
+            previewImage.src = resizedImageDataUrl;
+            downloadLink.href = resizedImageDataUrl;
+
+            // Make the output section visible
+            outputSection.classList.remove('hidden');
+            showMessage('Image resized successfully!', false);
+        });
+
+        // Add input event listeners to enable/disable resize button based on inputs
+        function checkInputs() {
+            const width = parseInt(newWidthInput.value, 10);
+            const height = parseInt(newHeightInput.value, 10);
+            if (uploadedImage && !isNaN(width) && width > 0 && !isNaN(height) && height > 0) {
+                resizeBtn.disabled = false;
+            } else {
+                resizeBtn.disabled = true;
+            }
+        }
+        newWidthInput.addEventListener('input', checkInputs);
+        newHeightInput.addEventListener('input', checkInputs);
+
+        // Initial check on load
+        checkInputs();
+    </script>
+</body>
+</html>
