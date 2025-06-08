@@ -134,7 +134,6 @@
     <div class="container">
         <h1 class="text-4xl font-extrabold text-center mb-6 text-gray-800">FreqLens - Audio Analyzer By Abdur Rahman</h1>
         <p class="text-center text-gray-600 mb-8">Upload an audio file to view its detailed properties, frequency spectrum, and waveform.</p>
-        <p class="text-center text-gray-600 mb-8">Reload the page after every upload for the best user experience.
         <!-- Audio file input section -->
         <div class="flex flex-col items-center mb-8">
             <label for="audioFile" class="bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-semibold py-3 px-8 rounded-full shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300 cursor-pointer">
@@ -381,7 +380,7 @@
                 // Add event listeners for audio playback state changes
                 audioElement.addEventListener('ended', () => {
                     pauseAudio(); // Automatically pause visualizations when audio finishes
-                    showMessageBox("Audio playback finished. Page will reload in 3 seconds.");
+                    showMessageBox("Audio playback finished.");
                     // Reload the page after 3 seconds
                     setTimeout(() => {
                         window.location.reload();
