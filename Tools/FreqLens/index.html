@@ -381,7 +381,11 @@
                 // Add event listeners for audio playback state changes
                 audioElement.addEventListener('ended', () => {
                     pauseAudio(); // Automatically pause visualizations when audio finishes
-                    showMessageBox("Audio playback finished.");
+                    showMessageBox("Audio playback finished. Page will reload in 3 seconds.");
+                    // Reload the page after 3 seconds
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 3000);
                 });
                 audioElement.addEventListener('pause', () => {
                     cancelAnimationFrame(animationFrameId); // Cancel the main animation loop
