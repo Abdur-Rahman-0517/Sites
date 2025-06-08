@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Color Picker</title>
+    <!-- Tailwind CSS CDN for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom styles for the magnified view */
+        #zoomCanvas {
+            border: 2px solid #3b82f6; /* Blue border for emphasis */
+            image-rendering: pixelated; /* Ensures sharp pixel scaling */
+            image-rendering: crisp-edges;
+            image-rendering: -moz-crisp-edges;
+            width: 100px; /* Fixed size for the zoom window */
+            height: 100px;
+        }
+
+        /* Hide the main canvas initially, show once image is loaded */
+        #mainCanvas {
+            display: none;
+            cursor: crosshair; /* Indicate interactivity */
+            max-width: 100%; /* Ensure responsiveness */
+            height: auto;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col items-center justify-center p-4 font-sans text-gray-800">
+
+    <div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-2xl text-center">
+        <h1 class="text-3xl font-bold mb-6 text-indigo-700">Image Color Picker</h1>
+
+        <!-- File Upload Section -->
+        <div class="mb-6">
+            <label for="imageUpload" class="block text-lg font-medium text-gray-700 mb-2">Upload an Image:</label>
+            <input type="file" id="imageUpload" accept="image/*" class="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+        </div>
+
+        <!-- Main Canvas for Image Display -->
+        <div class="relative mb-6 border-2 border-gray-300 rounded-lg overflow-hidden flex justify-center items-center bg-gray-50 p-2">
+            <canvas id="mainCanvas" class="rounded-md"></canvas>
+            <p id="uploadPrompt" class="text-gray-500 p-8">Please upload an image to begin.</p>
+        </div>
+
+        <div class="flex flex-col sm:flex-row justify-between items-center gap-4 mb-6">
+            <!-- Magnified View Section -->
+            <div class="flex-1 bg-blue-50 p-4 rounded-lg shadow-inner flex flex-col items-center">
+                <h2 class="text-xl font-semibold mb-2 text-blue-800">Magnified View (2x)</h2>
+                <canvas id="zoomCanvas" class="rounded-md"></canvas>
+                <p class="text-sm text-blue-600 mt-2">Hover or click on the image to see pixels up close.</p>
+            </div>
+
+            <!-- Color Output Section -->
+            <div class="flex-1 bg-green-50 p-4 rounded-lg shadow-inner flex flex-col items-center">
+                <h2 class="text-xl font-semibold mb-2 text-green-800">Selected Color</h2>
+                <div id="colorPreview" class="w-20 h-20 rounded-full border-2 border-gray-300 mb-3" style="background-color: #ffffff;"></div>
+                <p class="text-lg font-medium text-gray-700">RGB: <span id="rgbValue" class="font-bold text-green-700">N/A</span></p>
+                <p class="text-lg font-medium text-gray-700">Hex: <span id="hexValue" class="font-bold text-green-700">N/A</span></p>
+            </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="mt-6">
+            <button id="clearButton" class="bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-6 rounded-md shadow-lg transition duration-300 ease-in-out transform hover:scale-105">
+                Clear Image & Reset
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Get references to DOM elements
+        const imageUpload = document.getElementById('imageUpload');
+        const mainCanvas = document.getElementById('mainCanvas');
+        const mainCtx = mainCanvas.getContext('2d');
+        const zoomCanvas = document.getElementById('zoomCanvas');
+        const zoomCtx = zoomCanvas.getContext('2d');
+        const colorPreview = document.getElementById('colorPreview');
+        const rgbValueSpan = document.getElementById('rgbValue');
+        const hexValueSpan = document.getElementById('hexValue');
+        const clearButton = document.getElementById('clearButton');
+        const uploadPrompt = document.getElementById('uploadPrompt');
+
+        let currentImage = null; // Stores the loaded image object
+        let isColorLocked = false; // New state variable to control locking
+
+        // Set zoom canvas dimensions
+        const ZOOM_CANVAS_SIZE = 100; // Size of the zoom display area
+        const PIXEL_SCALE = 5;       // How much each original pixel is magnified (e.g., 20x20 pixels for a 4x4 area)
+        const ZOOM_AREA_SIZE = ZOOM_CANVAS_SIZE / PIXEL_SCALE; // Number of original pixels to show (e.g., 20px / 5 = 4 pixels across)
+
+        zoomCanvas.width = ZOOM_CANVAS_SIZE;
+        zoomCanvas.height = ZOOM_CANVAS_SIZE;
+
+        /**
+         * Converts RGB values to a Hexadecimal color code.
+         * @param {number} r - Red component (0-255).
+         * @param {number} g - Green component (0-255).
+         * @param {number} b - Blue component (0-255).
+         * @returns {string} Hexadecimal color string (e.g., "#RRGGBB").
+         */
+        function rgbToHex(r, g, b) {
+            return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1).toUpperCase();
+        }
+
+        /**
+         * Handles the image file selection and draws it onto the main canvas.
+         * @param {Event} event - The file input change event.
+         */
+        function handleImageUpload(event) {
+            const file = event.target.files[0];
+            if (!file) {
+                return;
+            }
+
+            const reader = new FileReader();
+
+            reader.onload = function(e) {
+                const img = new Image();
+                img.onload = function() {
+                    currentImage = img; // Store the image
+                    mainCanvas.width = img.width;
+                    mainCanvas.height = img.height;
+                    mainCtx.drawImage(img, 0, 0);
+
+                    // Show the canvas and hide the prompt
+                    mainCanvas.style.display = 'block';
+                    uploadPrompt.style.display = 'none';
+
+                    // Reset color display and unlock
+                    updateColorDisplay(null, null, null);
+                    isColorLocked = false;
+                };
+                img.src = e.target.result;
+            };
+
+            reader.readAsDataURL(file);
+        }
+
+        /**
+         * Picks the color of the pixel at the given coordinates on the main canvas
+         * and updates the display. Also handles the magnified view.
+         * @param {number} x - X coordinate on the canvas.
+         * @param {number} y - Y coordinate on the canvas.
+         */
+        function pickColor(x, y) {
+            if (!currentImage) {
+                return; // No image loaded
+            }
+
+            // Get the pixel data from the main canvas
+            // Use Math.floor to ensure integer coordinates
+            const pixelData = mainCtx.getImageData(Math.floor(x), Math.floor(y), 1, 1).data;
+            const r = pixelData[0];
+            const g = pixelData[1];
+            const b = pixelData[2];
+            // const a = pixelData[3]; // Alpha value, not used for RGB/Hex display here
+
+            updateColorDisplay(r, g, b);
+
+            // --- Magnified View Logic ---
+            zoomCtx.clearRect(0, 0, zoomCanvas.width, zoomCanvas.height);
+
+            // Calculate the top-left corner of the area to magnify around the cursor
+            // We want to show a square area with the picked pixel roughly in the center.
+            // For a ZOOM_AREA_SIZE x ZOOM_AREA_SIZE pixel grid, the center pixel is at (Math.floor(ZOOM_AREA_SIZE / 2), Math.floor(ZOOM_AREA_SIZE / 2)).
+            // So, calculate the sourceX and sourceY to get that central pixel.
+            const halfZoomArea = Math.floor(ZOOM_AREA_SIZE / 2);
+            let sourceX = Math.floor(x) - halfZoomArea;
+            let sourceY = Math.floor(y) - halfZoomArea;
+
+            // Ensure sourceX and sourceY don't go out of bounds of the main image
+            sourceX = Math.max(0, Math.min(sourceX, mainCanvas.width - ZOOM_AREA_SIZE));
+            sourceY = Math.max(0, Math.min(sourceY, mainCanvas.height - ZOOM_AREA_SIZE));
+
+            // Get the image data for the magnified area
+            const zoomImageData = mainCtx.getImageData(sourceX, sourceY, ZOOM_AREA_SIZE, ZOOM_AREA_SIZE);
+
+            // Draw each pixel from the zoomImageData onto the zoomCanvas, scaled up
+            for (let i = 0; i < zoomImageData.data.length; i += 4) {
+                const pixelIndex = i / 4;
+                const originalPixelX = pixelIndex % ZOOM_AREA_SIZE;
+                const originalPixelY = Math.floor(pixelIndex / ZOOM_AREA_SIZE);
+
+                const displayX = originalPixelX * PIXEL_SCALE;
+                const displayY = originalPixelY * PIXEL_SCALE;
+
+                zoomCtx.fillStyle = `rgb(${zoomImageData.data[i]}, ${zoomImageData.data[i+1]}, ${zoomImageData.data[i+2]})`;
+                zoomCtx.fillRect(displayX, displayY, PIXEL_SCALE, PIXEL_SCALE);
+            }
+
+            // Highlight the exact selected pixel in the magnified view
+            const highlightX = (Math.floor(x) - sourceX) * PIXEL_SCALE;
+            const highlightY = (Math.floor(y) - sourceY) * PIXEL_SCALE;
+            zoomCtx.strokeStyle = 'red'; // Highlight color
+            zoomCtx.lineWidth = 2;
+            zoomCtx.strokeRect(highlightX, highlightY, PIXEL_SCALE, PIXEL_SCALE);
+        }
+
+        /**
+         * Updates the color display elements.
+         * @param {number|null} r - Red value or null.
+         * @param {number|null} g - Green value or null.
+         * @param {number|null} b - Blue value or null.
+         */
+        function updateColorDisplay(r, g, b) {
+            if (r === null || g === null || b === null) {
+                colorPreview.style.backgroundColor = '#ffffff';
+                rgbValueSpan.textContent = 'N/A';
+                hexValueSpan.textContent = 'N/A';
+            } else {
+                colorPreview.style.backgroundColor = `rgb(${r}, ${g}, ${b})`;
+                rgbValueSpan.textContent = `${r}, ${g}, ${b}`;
+                hexValueSpan.textContent = rgbToHex(r, g, b);
+            }
+        }
+
+        /**
+         * Resets the application state, clearing canvases and displays.
+         */
+        function clearCanvas() {
+            mainCtx.clearRect(0, 0, mainCanvas.width, mainCanvas.height);
+            zoomCtx.clearRect(0, 0, zoomCanvas.width, zoomCanvas.height);
+            updateColorDisplay(null, null, null);
+            imageUpload.value = ''; // Clear file input
+            currentImage = null; // Clear stored image
+            isColorLocked = false; // Reset lock state
+
+            // Hide the canvas and show the prompt
+            mainCanvas.style.display = 'none';
+            uploadPrompt.style.display = 'block';
+        }
+
+        // --- Event Listeners ---
+        imageUpload.addEventListener('change', handleImageUpload);
+
+        // Toggle lock state on click
+        mainCanvas.addEventListener('click', function(event) {
+            if (currentImage) {
+                isColorLocked = !isColorLocked; // Toggle the lock state
+                // If unlocked, pick the color at the clicked position
+                if (!isColorLocked) {
+                    const rect = mainCanvas.getBoundingClientRect();
+                    const scaleX = mainCanvas.width / rect.width;
+                    const scaleY = mainCanvas.height / rect.height;
+
+                    const x = (event.clientX - rect.left) * scaleX;
+                    const y = (event.clientY - rect.top) * scaleY;
+                    pickColor(x, y);
+                }
+                // If locked, the color and zoom remain as they were at the point of click
+            }
+        });
+
+        // Only update on mousemove if not locked
+        mainCanvas.addEventListener('mousemove', function(event) {
+            if (currentImage && !isColorLocked) {
+                const rect = mainCanvas.getBoundingClientRect();
+                const scaleX = mainCanvas.width / rect.width;
+                const scaleY = mainCanvas.height / rect.height;
+
+                const x = (event.clientX - rect.left) * scaleX;
+                const y = (event.clientY - rect.top) * scaleY;
+                pickColor(x, y); // This will update both color and zoom view on hover
+            }
+        });
+
+        // Add event listener for the clear button
+        clearButton.addEventListener('click', clearCanvas);
+
+        // Initial setup for the zoom canvas background
+        zoomCtx.fillStyle = '#f0f0f0'; // Light grey background
+        zoomCtx.fillRect(0, 0, zoomCanvas.width, zoomCanvas.height);
+
+    </script>
+</body>
+</html>
