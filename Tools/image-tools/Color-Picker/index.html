@@ -15,55 +15,203 @@
             image-rendering: -moz-crisp-edges;
             width: 100px; /* Fixed size for the zoom window */
             height: 100px;
+            background-color: #f0f0f0; /* Light grey background for empty zoom */
         }
 
         /* Hide the main canvas initially, show once image is loaded */
         #mainCanvas {
             display: none;
-            cursor: crosshair; /* Indicate interactivity */
+            cursor: none; /* Hide default cursor, use custom crosshair */
             max-width: 100%; /* Ensure responsiveness */
             height: auto;
+        }
+
+        /* Styles for drag and drop area */
+        .drag-area {
+            border: 2px dashed #a0aec0; /* Light gray dashed border */
+            background-color: #edf2f7; /* Light background */
+            transition: all 0.2s ease-in-out;
+        }
+
+        .drag-area.active {
+            border-color: #4299e1; /* Blue border when active */
+            background-color: #e0f2fe; /* Lighter blue background */
+        }
+
+        /* Spinner animation for loading */
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-left-color: #4f46e5;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Style for copy button feedback */
+        .copied-feedback {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: #4CAF50; /* Green background */
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 0.8rem;
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out;
+            z-index: 10; /* Ensure it's above other elements */
+            white-space: nowrap; /* Prevent text wrapping */
+        }
+        .copied-feedback.show {
+            opacity: 1;
+        }
+
+        /* Custom Crosshair */
+        #customCrosshair {
+            position: absolute;
+            width: 20px; /* Size of the crosshair */
+            height: 20px;
+            transform: translate(-50%, -50%); /* Center the crosshair */
+            pointer-events: none; /* Allow events to pass through to canvas */
+            z-index: 5; /* Above canvas, below popups */
+            display: none; /* Hidden by default */
+        }
+        #customCrosshair::before,
+        #customCrosshair::after {
+            content: '';
+            position: absolute;
+            background-color: black; /* Main line color */
+            mix-blend-mode: difference; /* Makes it visible on any background */
+            /* Add stronger white glow/shadow for better contrast */
+            filter: drop-shadow(0 0 1px white) drop-shadow(0 0 2px white) drop-shadow(0 0 3px white);
+        }
+        #customCrosshair::before { /* Vertical line */
+            width: 2px; /* Thicker line */
+            height: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        #customCrosshair::after { /* Horizontal line */
+            height: 2px; /* Thicker line */
+            width: 100%;
+            top: 50%;
+            transform: translateY(-50%);
         }
     </style>
 </head>
 <body class="bg-gray-100 min-h-screen flex flex-col items-center justify-center p-4 font-sans text-gray-800">
 
-    <div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-2xl text-center">
-        <h1 class="text-3xl font-bold mb-6 text-indigo-700">Image Color Picker</h1>
+    <div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-4xl text-center">
+        <h1 class="text-4xl font-extrabold mb-6 text-indigo-800">Advanced Image Color Picker</h1>
 
-        <!-- File Upload Section -->
+        <!-- File Upload & Drag and Drop Section -->
         <div class="mb-6">
-            <label for="imageUpload" class="block text-lg font-medium text-gray-700 mb-2">Upload an Image:</label>
-            <input type="file" id="imageUpload" accept="image/*" class="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+            <label for="imageUpload" class="block text-lg font-medium text-gray-700 mb-2">Upload or Drag & Drop an Image:</label>
+            <div id="dragDropArea" class="drag-area w-full p-6 border-2 border-gray-300 rounded-md shadow-sm text-gray-500 cursor-pointer hover:border-blue-400 focus-within:ring-indigo-500 focus-within:border-indigo-500 transition duration-200 ease-in-out">
+                <input type="file" id="imageUpload" accept="image/*" class="hidden">
+                <p class="text-center text-lg">Click to select or Drag & Drop your image here</p>
+                <p class="text-sm text-gray-400 mt-1">(Supports JPG, PNG, GIF, BMP)</p>
+            </div>
         </div>
 
         <!-- Main Canvas for Image Display -->
-        <div class="relative mb-6 border-2 border-gray-300 rounded-lg overflow-hidden flex justify-center items-center bg-gray-50 p-2">
+        <div id="canvasContainer" class="relative mb-6 border-2 border-gray-300 rounded-lg overflow-hidden flex justify-center items-center bg-gray-50 p-2 min-h-[300px]">
             <canvas id="mainCanvas" class="rounded-md"></canvas>
-            <p id="uploadPrompt" class="text-gray-500 p-8">Please upload an image to begin.</p>
+            <p id="uploadPrompt" class="text-gray-500 p-8 text-xl">Please upload or drag an image to begin.</p>
+            <div id="loadingSpinner" class="absolute inset-0 flex items-center justify-center bg-white bg-opacity-75 hidden">
+                <div class="spinner"></div>
+                <p class="ml-3 text-lg text-indigo-700">Loading Image...</p>
+            </div>
+            <div id="lockedIndicator" class="absolute bottom-2 right-2 bg-blue-600 text-white text-xs px-2 py-1 rounded-md shadow-lg hidden">
+                Color Locked
+            </div>
+            <div id="customCrosshair"></div> <!-- Custom crosshair element moved here -->
         </div>
 
-        <div class="flex flex-col sm:flex-row justify-between items-center gap-4 mb-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
             <!-- Magnified View Section -->
-            <div class="flex-1 bg-blue-50 p-4 rounded-lg shadow-inner flex flex-col items-center">
-                <h2 class="text-xl font-semibold mb-2 text-blue-800">Magnified View (2x)</h2>
+            <div class="bg-blue-50 p-4 rounded-lg shadow-inner flex flex-col items-center">
+                <h2 class="text-xl font-semibold mb-2 text-blue-800">Magnified View</h2>
+                <div class="flex items-center mb-3">
+                    <label for="zoomLevel" class="text-md font-medium text-blue-700 mr-2">Zoom:</label>
+                    <select id="zoomLevel" class="px-3 py-1 border border-blue-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                        <option value="2">2x</option>
+                        <option value="5" selected>5x</option>
+                        <option value="10">10x</option>
+                    </select>
+                </div>
                 <canvas id="zoomCanvas" class="rounded-md"></canvas>
-                <p class="text-sm text-blue-600 mt-2">Hover or click on the image to see pixels up close.</p>
+                <p class="text-sm text-blue-600 mt-2">Hover/click on image for pixel detail.</p>
             </div>
 
             <!-- Color Output Section -->
-            <div class="flex-1 bg-green-50 p-4 rounded-lg shadow-inner flex flex-col items-center">
+            <div class="bg-green-50 p-4 rounded-lg shadow-inner flex flex-col items-center justify-center relative">
                 <h2 class="text-xl font-semibold mb-2 text-green-800">Selected Color</h2>
-                <div id="colorPreview" class="w-20 h-20 rounded-full border-2 border-gray-300 mb-3" style="background-color: #ffffff;"></div>
-                <p class="text-lg font-medium text-gray-700">RGB: <span id="rgbValue" class="font-bold text-green-700">N/A</span></p>
-                <p class="text-lg font-medium text-gray-700">Hex: <span id="hexValue" class="font-bold text-green-700">N/A</span></p>
+                <div id="colorPreview" class="w-24 h-24 rounded-full border-2 border-gray-300 mb-3" style="background-color: #ffffff;"></div>
+                
+                <div class="relative w-full mb-1 flex items-center justify-center">
+                    <p class="text-lg font-medium text-gray-700 inline-block">RGB: <span id="rgbValue" class="font-bold text-green-700">N/A</span></p>
+                    <button id="copyRgb" class="ml-2 p-1 bg-gray-200 rounded-md hover:bg-gray-300 transition duration-150 ease-in-out text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500" title="Copy RGB Value">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 0h-2M15 7h3m0 0h3m-3 0V4m0 0H9" />
+                        </svg>
+                    </button>
+                    <div id="rgbCopiedFeedback" class="copied-feedback">Copied!</div>
+                </div>
+
+                <div class="relative w-full mb-1 flex items-center justify-center">
+                    <p class="text-lg font-medium text-gray-700 inline-block">Hex: <span id="hexValue" class="font-bold text-green-700">N/A</span></p>
+                    <button id="copyHex" class="ml-2 p-1 bg-gray-200 rounded-md hover:bg-gray-300 transition duration-150 ease-in-out text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500" title="Copy Hex Value">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 0h-2M15 7h3m0 0h3m-3 0V4m0 0H9" />
+                        </svg>
+                    </button>
+                    <div id="hexCopiedFeedback" class="copied-feedback">Copied!</div>
+                </div>
+
+                <div class="relative w-full flex items-center justify-center">
+                    <p class="text-lg font-medium text-gray-700 inline-block">HSL: <span id="hslValue" class="font-bold text-green-700">N/A</span></p>
+                    <button id="copyHsl" class="ml-2 p-1 bg-gray-200 rounded-md hover:bg-gray-300 transition duration-150 ease-in-out text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500" title="Copy HSL Value">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 0h-2M15 7h3m0 0h3m-3 0V4m0 0H9" />
+                        </svg>
+                    </button>
+                    <div id="hslCopiedFeedback" class="copied-feedback">Copied!</div>
+                </div>
+
+                <div class="relative w-full mt-2 flex items-center justify-center">
+                    <p class="text-lg font-medium text-gray-700 inline-block">Coords: (<span id="xCoord" class="font-bold text-green-700">N/A</span>, <span id="yCoord" class="font-bold text-green-700">N/A</span>)</p>
+                </div>
+                
+                <button id="copyAllColors" class="mt-4 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md shadow-md transition duration-300 ease-in-out transform hover:scale-105 relative">
+                    Copy All Colors
+                    <div id="allColorsCopiedFeedback" class="copied-feedback">Copied All!</div>
+                </button>
+            </div>
+
+            <!-- Color History Section -->
+            <div class="bg-purple-50 p-4 rounded-lg shadow-inner flex flex-col items-center">
+                <h2 class="text-xl font-semibold mb-2 text-purple-800">Color History</h2>
+                <div id="colorHistory" class="w-full h-32 overflow-y-auto bg-white rounded-md p-2 border border-gray-200 flex flex-wrap justify-center gap-2">
+                    <p id="historyPrompt" class="text-gray-400 text-sm">No colors picked yet.</p>
+                </div>
+                <button id="clearHistoryButton" class="mt-4 bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-md shadow-md transition duration-300 ease-in-out transform hover:scale-105">
+                    Clear History
+                </button>
             </div>
         </div>
 
         <!-- Actions -->
         <div class="mt-6">
             <button id="clearButton" class="bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-6 rounded-md shadow-lg transition duration-300 ease-in-out transform hover:scale-105">
-                Clear Image & Reset
+                Clear Image & Reset All
             </button>
         </div>
     </div>
@@ -78,19 +226,49 @@
         const colorPreview = document.getElementById('colorPreview');
         const rgbValueSpan = document.getElementById('rgbValue');
         const hexValueSpan = document.getElementById('hexValue');
+        const hslValueSpan = document.getElementById('hslValue');
+        const xCoordSpan = document.getElementById('xCoord');
+        const yCoordSpan = document.getElementById('yCoord');
         const clearButton = document.getElementById('clearButton');
         const uploadPrompt = document.getElementById('uploadPrompt');
+        const dragDropArea = document.getElementById('dragDropArea');
+        const loadingSpinner = document.getElementById('loadingSpinner');
+        const lockedIndicator = document.getElementById('lockedIndicator');
+        const colorHistoryDiv = document.getElementById('colorHistory');
+        const historyPrompt = document.getElementById('historyPrompt');
+        const clearHistoryButton = document.getElementById('clearHistoryButton');
+        const copyRgbButton = document.getElementById('copyRgb');
+        const copyHexButton = document.getElementById('copyHex');
+        const copyHslButton = document.getElementById('copyHsl');
+        const copyAllColorsButton = document.getElementById('copyAllColors');
+        const rgbCopiedFeedback = document.getElementById('rgbCopiedFeedback');
+        const hexCopiedFeedback = document.getElementById('hexCopiedFeedback');
+        const hslCopiedFeedback = document.getElementById('hslCopiedFeedback');
+        const allColorsCopiedFeedback = document.getElementById('allColorsCopiedFeedback');
+        const zoomLevelSelect = document.getElementById('zoomLevel');
+        const customCrosshair = document.getElementById('customCrosshair');
+        const canvasContainer = document.getElementById('canvasContainer');
+
 
         let currentImage = null; // Stores the loaded image object
-        let isColorLocked = false; // New state variable to control locking
+        let isColorLocked = false; // State variable to control locking
+        let colorHistory = []; // Array to store picked colors
+        let currentPixelScale = parseInt(zoomLevelSelect.value); // Initial pixel scale from dropdown
 
         // Set zoom canvas dimensions
         const ZOOM_CANVAS_SIZE = 100; // Size of the zoom display area
-        const PIXEL_SCALE = 5;       // How much each original pixel is magnified (e.g., 20x20 pixels for a 4x4 area)
-        const ZOOM_AREA_SIZE = ZOOM_CANVAS_SIZE / PIXEL_SCALE; // Number of original pixels to show (e.g., 20px / 5 = 4 pixels across)
+        // PIXEL_SCALE will be dynamically set by currentPixelScale
+        let ZOOM_AREA_SIZE = ZOOM_CANVAS_SIZE / currentPixelScale; // Number of original pixels to show
 
         zoomCanvas.width = ZOOM_CANVAS_SIZE;
         zoomCanvas.height = ZOOM_CANVAS_SIZE;
+
+        /**
+         * Updates ZOOM_AREA_SIZE based on the current PIXEL_SCALE.
+         */
+        function updateZoomAreaSize() {
+            ZOOM_AREA_SIZE = ZOOM_CANVAS_SIZE / currentPixelScale;
+        }
 
         /**
          * Converts RGB values to a Hexadecimal color code.
@@ -104,14 +282,182 @@
         }
 
         /**
-         * Handles the image file selection and draws it onto the main canvas.
-         * @param {Event} event - The file input change event.
+         * Converts an RGB color value to HSL. Conversion formula
+         * adapted from http://en.wikipedia.org/wiki/HSL_color_space.
+         * Assumes r, g, and b are contained in the set [0, 255] and
+         * returns h, s, and l in the set [0, 1].
+         *
+         * @param   Number  r       The red color value
+         * @param   Number  g       The green color value
+         * @param   Number  b       The blue color value
+         * @return  Array           The HSL representation
          */
-        function handleImageUpload(event) {
-            const file = event.target.files[0];
+        function rgbToHsl(r, g, b) {
+            r /= 255, g /= 255, b /= 255;
+
+            var max = Math.max(r, g, b),
+                min = Math.min(r, g, b);
+            var h, s, l = (max + min) / 2;
+
+            if (max == min) {
+                h = s = 0; // achromatic
+            } else {
+                var d = max - min;
+                s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+
+                switch (max) {
+                    case r:
+                        h = (g - b) / d + (g < b ? 6 : 0);
+                        break;
+                    case g:
+                        h = (b - r) / d + 2;
+                        break;
+                    case b:
+                        h = (r - g) / d + 4;
+                        break;
+                }
+
+                h /= 6;
+            }
+
+            // Convert to percentages and round
+            return [
+                Math.round(h * 360), // Hue in degrees (0-360)
+                Math.round(s * 100), // Saturation in percentage (0-100)
+                Math.round(l * 100)  // Lightness in percentage (0-100)
+            ];
+        }
+
+        /**
+         * Copies text to the clipboard.
+         * @param {string} text - The text to copy.
+         * @param {HTMLElement} feedbackElement - The element to show feedback on.
+         */
+        function copyToClipboard(text, feedbackElement) {
+            try {
+                const tempInput = document.createElement('textarea');
+                tempInput.value = text;
+                document.body.appendChild(tempInput);
+                tempInput.select();
+                document.execCommand('copy');
+                document.body.removeChild(tempInput);
+
+                // Show feedback
+                feedbackElement.classList.add('show');
+                setTimeout(() => {
+                    feedbackElement.classList.remove('show');
+                }, 1000);
+            } catch (err) {
+                console.error('Failed to copy text: ', err);
+            }
+        }
+
+        /**
+         * Adds a color to the history, preventing duplicates and limiting size.
+         * @param {string} hex - The hex color string to add.
+         */
+        function addColorToHistory(hex) {
+            // Add to the beginning if not already present
+            if (!colorHistory.includes(hex)) {
+                colorHistory.unshift(hex);
+                // Limit history to a certain number of colors (e.g., 20)
+                if (colorHistory.length > 20) {
+                    colorHistory.pop();
+                }
+                renderColorHistory();
+                saveColorHistory(); // Save to local storage
+            }
+        }
+
+        /**
+         * Loads color history from local storage.
+         */
+        function loadColorHistory() {
+            try {
+                const storedHistory = localStorage.getItem('colorPickerHistory');
+                if (storedHistory) {
+                    colorHistory = JSON.parse(storedHistory);
+                    renderColorHistory();
+                }
+            } catch (e) {
+                console.error("Error loading color history from local storage:", e);
+                colorHistory = []; // Reset if there's an error
+            }
+        }
+
+        /**
+         * Saves color history to local storage.
+         */
+        function saveColorHistory() {
+            try {
+                localStorage.setItem('colorPickerHistory', JSON.stringify(colorHistory));
+            } catch (e) {
+                console.error("Error saving color history to local storage:", e);
+            }
+        }
+
+        /**
+         * Renders the color history in the dedicated div.
+         */
+        function renderColorHistory() {
+            colorHistoryDiv.innerHTML = ''; // Clear existing history
+            if (colorHistory.length === 0) {
+                historyPrompt.style.display = 'block';
+                colorHistoryDiv.appendChild(historyPrompt);
+            } else {
+                historyPrompt.style.display = 'none';
+                colorHistory.forEach(hex => {
+                    const colorSwatch = document.createElement('div');
+                    colorSwatch.className = 'w-10 h-10 rounded-md cursor-pointer border border-gray-200 shadow-sm hover:scale-110 transition-transform duration-200 ease-in-out';
+                    colorSwatch.style.backgroundColor = hex;
+                    colorSwatch.title = hex; // Show hex on hover
+                    colorSwatch.addEventListener('click', () => {
+                        // Re-pick this color from history
+                        const rgb = hexToRgb(hex);
+                        if (rgb) {
+                            updateColorDisplay(rgb.r, rgb.g, rgb.b);
+                            // Set isColorLocked to true to maintain selection from history
+                            isColorLocked = true;
+                            lockedIndicator.style.display = 'block';
+                            // Clear zoom canvas as there's no pixel context
+                            zoomCtx.clearRect(0, 0, zoomCanvas.width, zoomCanvas.height);
+                            zoomCtx.fillStyle = '#f0f0f0';
+                            zoomCtx.fillRect(0, 0, zoomCanvas.width, zoomCanvas.height);
+                            customCrosshair.style.display = 'none'; // Hide crosshair if picking from history
+                            // Coordinates from history are not relevant to live canvas position
+                            xCoordSpan.textContent = 'N/A';
+                            yCoordSpan.textContent = 'N/A';
+                        }
+                    });
+                    colorHistoryDiv.appendChild(colorSwatch);
+                });
+            }
+        }
+
+        /**
+         * Converts a hex color string to RGB object.
+         * @param {string} hex - The hex color string (e.g., "#RRGGBB").
+         * @returns {object|null} An object with r, g, b properties, or null if invalid.
+         */
+        function hexToRgb(hex) {
+            const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+            return result ? {
+                r: parseInt(result[1], 16),
+                g: parseInt(result[2], 16),
+                b: parseInt(result[3], 16)
+            } : null;
+        }
+
+        /**
+         * Handles the image file selection and draws it onto the main canvas.
+         * @param {File} file - The image file object.
+         */
+        function processImageFile(file) {
             if (!file) {
                 return;
             }
+
+            loadingSpinner.style.display = 'flex'; // Show spinner
 
             const reader = new FileReader();
 
@@ -119,17 +465,35 @@
                 const img = new Image();
                 img.onload = function() {
                     currentImage = img; // Store the image
+
+                    // Set canvas dimensions to image natural size for drawing, but use CSS for display size
                     mainCanvas.width = img.width;
                     mainCanvas.height = img.height;
+                    mainCanvas.style.width = '100%';
+                    mainCanvas.style.height = 'auto'; // Let CSS handle display dimensions
+
+                    mainCtx.clearRect(0, 0, mainCanvas.width, mainCanvas.height); // Clear before drawing
                     mainCtx.drawImage(img, 0, 0);
 
                     // Show the canvas and hide the prompt
                     mainCanvas.style.display = 'block';
                     uploadPrompt.style.display = 'none';
+                    loadingSpinner.style.display = 'none'; // Hide spinner
 
                     // Reset color display and unlock
                     updateColorDisplay(null, null, null);
                     isColorLocked = false;
+                    lockedIndicator.style.display = 'none';
+                    xCoordSpan.textContent = 'N/A';
+                    yCoordSpan.textContent = 'N/A';
+                };
+                img.onerror = function() {
+                    loadingSpinner.style.display = 'none';
+                    uploadPrompt.style.display = 'block';
+                    mainCanvas.style.display = 'none';
+                    console.error("Error loading image.");
+                    // Using a custom message box instead of alert()
+                    displayMessage("Failed to load image. Please try a different image file.");
                 };
                 img.src = e.target.result;
             };
@@ -140,34 +504,40 @@
         /**
          * Picks the color of the pixel at the given coordinates on the main canvas
          * and updates the display. Also handles the magnified view.
-         * @param {number} x - X coordinate on the canvas.
-         * @param {number} y - Y coordinate on the canvas.
+         * @param {number} x - X coordinate on the canvas (relative to canvas's drawing buffer).
+         * @param {number} y - Y coordinate on the canvas (relative to canvas's drawing buffer).
          */
         function pickColor(x, y) {
             if (!currentImage) {
                 return; // No image loaded
             }
 
+            // Ensure coordinates are within canvas bounds
+            const clampedX = Math.max(0, Math.min(Math.floor(x), mainCanvas.width - 1));
+            const clampedY = Math.max(0, Math.min(Math.floor(y), mainCanvas.height - 1));
+
             // Get the pixel data from the main canvas
-            // Use Math.floor to ensure integer coordinates
-            const pixelData = mainCtx.getImageData(Math.floor(x), Math.floor(y), 1, 1).data;
+            const pixelData = mainCtx.getImageData(clampedX, clampedY, 1, 1).data;
             const r = pixelData[0];
             const g = pixelData[1];
             const b = pixelData[2];
-            // const a = pixelData[3]; // Alpha value, not used for RGB/Hex display here
 
             updateColorDisplay(r, g, b);
+            xCoordSpan.textContent = clampedX;
+            yCoordSpan.textContent = clampedY;
 
             // --- Magnified View Logic ---
             zoomCtx.clearRect(0, 0, zoomCanvas.width, zoomCanvas.height);
+            zoomCtx.fillStyle = '#f0f0f0'; // Light grey background
+            zoomCtx.fillRect(0, 0, zoomCanvas.width, zoomCanvas.height);
+
+            // Update zoom area size based on current pixel scale
+            updateZoomAreaSize();
 
             // Calculate the top-left corner of the area to magnify around the cursor
-            // We want to show a square area with the picked pixel roughly in the center.
-            // For a ZOOM_AREA_SIZE x ZOOM_AREA_SIZE pixel grid, the center pixel is at (Math.floor(ZOOM_AREA_SIZE / 2), Math.floor(ZOOM_AREA_SIZE / 2)).
-            // So, calculate the sourceX and sourceY to get that central pixel.
             const halfZoomArea = Math.floor(ZOOM_AREA_SIZE / 2);
-            let sourceX = Math.floor(x) - halfZoomArea;
-            let sourceY = Math.floor(y) - halfZoomArea;
+            let sourceX = clampedX - halfZoomArea;
+            let sourceY = clampedY - halfZoomArea;
 
             // Ensure sourceX and sourceY don't go out of bounds of the main image
             sourceX = Math.max(0, Math.min(sourceX, mainCanvas.width - ZOOM_AREA_SIZE));
@@ -182,19 +552,35 @@
                 const originalPixelX = pixelIndex % ZOOM_AREA_SIZE;
                 const originalPixelY = Math.floor(pixelIndex / ZOOM_AREA_SIZE);
 
-                const displayX = originalPixelX * PIXEL_SCALE;
-                const displayY = originalPixelY * PIXEL_SCALE;
+                const displayX = originalPixelX * currentPixelScale;
+                const displayY = originalPixelY * currentPixelScale;
 
                 zoomCtx.fillStyle = `rgb(${zoomImageData.data[i]}, ${zoomImageData.data[i+1]}, ${zoomImageData.data[i+2]})`;
-                zoomCtx.fillRect(displayX, displayY, PIXEL_SCALE, PIXEL_SCALE);
+                zoomCtx.fillRect(displayX, displayY, currentPixelScale, currentPixelScale);
+            }
+
+            // Draw grid lines on the magnified view
+            zoomCtx.strokeStyle = 'rgba(0, 0, 0, 0.2)'; // Light gray, semi-transparent
+            zoomCtx.lineWidth = 0.5;
+            for (let i = 0; i <= ZOOM_AREA_SIZE; i++) {
+                // Vertical lines
+                zoomCtx.beginPath();
+                zoomCtx.moveTo(i * currentPixelScale, 0);
+                zoomCtx.lineTo(i * currentPixelScale, ZOOM_CANVAS_SIZE);
+                zoomCtx.stroke();
+                // Horizontal lines
+                zoomCtx.beginPath();
+                zoomCtx.moveTo(0, i * currentPixelScale);
+                zoomCtx.lineTo(ZOOM_CANVAS_SIZE, i * currentPixelScale);
+                zoomCtx.stroke();
             }
 
             // Highlight the exact selected pixel in the magnified view
-            const highlightX = (Math.floor(x) - sourceX) * PIXEL_SCALE;
-            const highlightY = (Math.floor(y) - sourceY) * PIXEL_SCALE;
+            const highlightX = (clampedX - sourceX) * currentPixelScale;
+            const highlightY = (clampedY - sourceY) * currentPixelScale;
             zoomCtx.strokeStyle = 'red'; // Highlight color
             zoomCtx.lineWidth = 2;
-            zoomCtx.strokeRect(highlightX, highlightY, PIXEL_SCALE, PIXEL_SCALE);
+            zoomCtx.strokeRect(highlightX, highlightY, currentPixelScale, currentPixelScale);
         }
 
         /**
@@ -208,12 +594,37 @@
                 colorPreview.style.backgroundColor = '#ffffff';
                 rgbValueSpan.textContent = 'N/A';
                 hexValueSpan.textContent = 'N/A';
+                hslValueSpan.textContent = 'N/A';
             } else {
+                const hsl = rgbToHsl(r, g, b);
                 colorPreview.style.backgroundColor = `rgb(${r}, ${g}, ${b})`;
                 rgbValueSpan.textContent = `${r}, ${g}, ${b}`;
                 hexValueSpan.textContent = rgbToHex(r, g, b);
+                hslValueSpan.textContent = `${hsl[0]}°, ${hsl[1]}%, ${hsl[2]}%`;
             }
         }
+
+        /**
+         * Displays a custom message box instead of alert().
+         * @param {string} message - The message to display.
+         */
+        function displayMessage(message) {
+            // A simple div overlay for messages
+            const messageBox = document.createElement('div');
+            messageBox.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+            messageBox.innerHTML = `
+                <div class="bg-white p-6 rounded-lg shadow-xl text-center max-w-sm mx-auto">
+                    <p class="text-lg font-semibold mb-4">${message}</p>
+                    <button id="messageBoxClose" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md transition duration-200">OK</button>
+                </div>
+            `;
+            document.body.appendChild(messageBox);
+
+            document.getElementById('messageBoxClose').addEventListener('click', () => {
+                document.body.removeChild(messageBox);
+            });
+        }
+
 
         /**
          * Resets the application state, clearing canvases and displays.
@@ -221,34 +632,97 @@
         function clearCanvas() {
             mainCtx.clearRect(0, 0, mainCanvas.width, mainCanvas.height);
             zoomCtx.clearRect(0, 0, zoomCanvas.width, zoomCanvas.height);
+            zoomCtx.fillStyle = '#f0f0f0'; // Reset zoom canvas background
+            zoomCtx.fillRect(0, 0, zoomCanvas.width, zoomCanvas.height);
             updateColorDisplay(null, null, null);
             imageUpload.value = ''; // Clear file input
             currentImage = null; // Clear stored image
             isColorLocked = false; // Reset lock state
+            lockedIndicator.style.display = 'none';
+            customCrosshair.style.display = 'none'; // Hide crosshair
+            xCoordSpan.textContent = 'N/A';
+            yCoordSpan.textContent = 'N/A';
 
             // Hide the canvas and show the prompt
             mainCanvas.style.display = 'none';
             uploadPrompt.style.display = 'block';
+
+            // Clear color history and local storage
+            colorHistory = [];
+            renderColorHistory();
+            saveColorHistory(); // Save empty history to local storage
         }
 
         // --- Event Listeners ---
-        imageUpload.addEventListener('change', handleImageUpload);
+
+        // File input change
+        imageUpload.addEventListener('change', (event) => {
+            processImageFile(event.target.files[0]);
+        });
+
+        // Drag and Drop functionality
+        dragDropArea.addEventListener('dragover', (event) => {
+            event.preventDefault(); // Prevent default to allow drop
+            dragDropArea.classList.add('active');
+        });
+
+        dragDropArea.addEventListener('dragleave', (event) => {
+            event.preventDefault();
+            dragDropArea.classList.remove('active');
+        });
+
+        dragDropArea.addEventListener('drop', (event) => {
+            event.preventDefault();
+            dragDropArea.classList.remove('active');
+            const file = event.dataTransfer.files[0];
+            if (file && file.type.startsWith('image/')) {
+                processImageFile(file);
+            } else {
+                console.warn("Dropped file is not an image.");
+                displayMessage("Please drop an image file (e.g., JPG, PNG, GIF, BMP).");
+            }
+        });
+
+        dragDropArea.addEventListener('click', () => {
+            imageUpload.click(); // Trigger file input click when drag-drop area is clicked
+        });
 
         // Toggle lock state on click
         mainCanvas.addEventListener('click', function(event) {
             if (currentImage) {
                 isColorLocked = !isColorLocked; // Toggle the lock state
-                // If unlocked, pick the color at the clicked position
-                if (!isColorLocked) {
-                    const rect = mainCanvas.getBoundingClientRect();
-                    const scaleX = mainCanvas.width / rect.width;
-                    const scaleY = mainCanvas.height / rect.height;
+                lockedIndicator.style.display = isColorLocked ? 'block' : 'none';
 
-                    const x = (event.clientX - rect.left) * scaleX;
-                    const y = (event.clientY - rect.top) * scaleY;
-                    pickColor(x, y);
-                }
+                // If unlocked and clicked, pick the color at the clicked position
                 // If locked, the color and zoom remain as they were at the point of click
+                const rect = mainCanvas.getBoundingClientRect();
+                const scaleX = mainCanvas.width / rect.width;
+                const scaleY = mainCanvas.height / rect.height;
+
+                const x = (event.clientX - rect.left) * scaleX;
+                const y = (event.clientY - rect.top) * scaleY;
+                pickColor(x, y);
+
+                // Add the picked color to history only when it's locked (i.e., chosen)
+                if (isColorLocked) {
+                    const hex = hexValueSpan.textContent;
+                    if (hex !== 'N/A') {
+                        addColorToHistory(hex);
+                    }
+                    customCrosshair.style.display = 'none'; // Hide crosshair when locked
+                } else {
+                    // If unlocked, ensure crosshair is visible if mouse is over canvas
+                    // This uses the canvasContainer's position for accurate placement of the crosshair
+                    const containerRect = canvasContainer.getBoundingClientRect();
+                    const mouseX = event.clientX;
+                    const mouseY = event.clientY;
+                    if (mouseX >= containerRect.left && mouseX <= containerRect.right &&
+                        mouseY >= containerRect.top && mouseY <= containerRect.bottom) {
+                        customCrosshair.style.left = `${event.clientX - containerRect.left}px`;
+                        customCrosshair.style.top = `${event.clientY - containerRect.top}px`;
+                        customCrosshair.style.display = 'block';
+                    }
+                }
             }
         });
 
@@ -262,16 +736,130 @@
                 const x = (event.clientX - rect.left) * scaleX;
                 const y = (event.clientY - rect.top) * scaleY;
                 pickColor(x, y); // This will update both color and zoom view on hover
+
+                // Position custom crosshair relative to canvasContainer
+                const containerRect = canvasContainer.getBoundingClientRect();
+                customCrosshair.style.left = `${event.clientX - containerRect.left}px`;
+                customCrosshair.style.top = `${event.clientY - containerRect.top}px`;
+                customCrosshair.style.display = 'block';
             }
         });
 
+        mainCanvas.addEventListener('mouseleave', () => {
+            if (!isColorLocked) {
+                customCrosshair.style.display = 'none';
+            }
+        });
+
+        mainCanvas.addEventListener('mouseenter', () => {
+            if (!isColorLocked && currentImage) {
+                 customCrosshair.style.display = 'block';
+            }
+        });
+
+
         // Add event listener for the clear button
         clearButton.addEventListener('click', clearCanvas);
+
+        // Add event listener for clear history button
+        clearHistoryButton.addEventListener('click', () => {
+            colorHistory = [];
+            renderColorHistory();
+            saveColorHistory(); // Save empty history to local storage
+        });
+
+        // Copy RGB value
+        copyRgbButton.addEventListener('click', () => {
+            const rgbText = rgbValueSpan.textContent;
+            if (rgbText !== 'N/A') {
+                copyToClipboard(`rgb(${rgbText})`, rgbCopiedFeedback);
+            }
+        });
+
+        // Copy Hex value
+        copyHexButton.addEventListener('click', () => {
+            const hexText = hexValueSpan.textContent;
+            if (hexText !== 'N/A') {
+                copyToClipboard(hexText, hexCopiedFeedback);
+            }
+        });
+
+        // Copy HSL value
+        copyHslButton.addEventListener('click', () => {
+            const hslText = hslValueSpan.textContent;
+            if (hslText !== 'N/A') {
+                copyToClipboard(`hsl(${hslText})`, hslCopiedFeedback);
+            }
+        });
+
+        // Copy All Colors
+        copyAllColorsButton.addEventListener('click', () => {
+            const rgbText = rgbValueSpan.textContent;
+            const hexText = hexValueSpan.textContent;
+            const hslText = hslValueSpan.textContent;
+
+            if (rgbText !== 'N/A') {
+                const allColorsText = `RGB: rgb(${rgbText})\nHex: ${hexText}\nHSL: hsl(${hslText})`;
+                copyToClipboard(allColorsText, allColorsCopiedFeedback);
+            }
+        });
+
+
+        // Zoom level selection change
+        zoomLevelSelect.addEventListener('change', (event) => {
+            currentPixelScale = parseInt(event.target.value);
+            // Re-pick color at current cursor position if active, to update zoom view
+            if (currentImage && !isColorLocked) {
+                const rect = mainCanvas.getBoundingClientRect();
+                // Get approximate center of canvas as reference if mouse not over
+                const x = mainCanvas.width / 2;
+                const y = mainCanvas.height / 2;
+                pickColor(x, y);
+            } else {
+                 // If no image or locked, just update the zoom canvas background
+                 zoomCtx.clearRect(0, 0, zoomCanvas.width, zoomCanvas.height);
+                 zoomCtx.fillStyle = '#f0f0f0';
+                 zoomCtx.fillRect(0, 0, zoomCanvas.width, zoomCanvas.height);
+            }
+        });
+
 
         // Initial setup for the zoom canvas background
         zoomCtx.fillStyle = '#f0f0f0'; // Light grey background
         zoomCtx.fillRect(0, 0, zoomCanvas.width, zoomCanvas.height);
 
+        // Initial render of color history and load from local storage
+        loadColorHistory();
+
+        // Handle canvas resizing for responsiveness
+        window.addEventListener('resize', () => {
+            if (currentImage) {
+                // Redraw image to fit new container size without distorting
+                const img = currentImage;
+                const containerWidth = mainCanvas.parentElement.clientWidth;
+                const containerHeight = mainCanvas.parentElement.clientHeight;
+
+                let newWidth = img.width;
+                let newHeight = img.height;
+
+                // Only resize if image is larger than container
+                if (img.width > containerWidth || img.height > containerHeight) {
+                    const aspectRatio = img.width / img.height;
+                    if (img.width / containerWidth > img.height / containerHeight) {
+                        newWidth = containerWidth;
+                        newHeight = containerWidth / aspectRatio;
+                    } else {
+                        newHeight = containerHeight;
+                        newWidth = containerHeight * aspectRatio;
+                    }
+                }
+                
+                // Set canvas element's display size via style, not width/height attributes
+                // The drawing buffer width/height remain the original image's size for pixel accuracy
+                mainCanvas.style.width = '100%';
+                mainCanvas.style.height = 'auto'; // Keep aspect ratio
+            }
+        });
     </script>
 </body>
 </html>
