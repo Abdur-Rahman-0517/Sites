@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Private YouTube Live Starter</title>
+</head>
+<body>
+  <h2>Private YouTube Live Starter</h2>
+  <button id="loginBtn">Login with Google</button>
+  <button id="startLiveBtn" disabled>Create Private Live</button>
+
+  <script src="https://apis.google.com/js/api.js"></script>
+  <script>
+    const CLIENT_ID = '1003156631157-5h2opc3au01ae6djhdli105tbkvjbctl.apps.googleusercontent.com';
+    const SCOPES = 'https://www.googleapis.com/auth/youtube.force-ssl';
+
+    async function initGAPI() {
+      return new Promise(resolve => gapi.load('client:auth2', resolve));
+    }
+
+    async function initClient() {
+      await gapi.client.init({
+        clientId: CLIENT_ID,
+        scope: SCOPES
+      });
+    }
+
+    async function login() {
+      await gapi.auth2.getAuthInstance().signIn();
+      document.getElementById('startLiveBtn').disabled = false;
+      alert('Logged in successfully!');
+    }
+
+    async function startPrivateLive() {
+      // Create private broadcast
+      const broadcast = await gapi.client.youtube.liveBroadcasts.insert({
+        part: 'snippet,status',
+        resource: {
+          snippet: {
+            title: 'My Private Live',
+            scheduledStartTime: new Date().toISOString()
+          },
+          status: { privacyStatus: 'private' }
+        }
+      });
+
+      // Create live stream
+      const stream = await gapi.client.youtube.liveStreams.insert({
+        part: 'snippet,cdn',
+        resource: {
+          snippet: { title: 'My Stream' },
+          cdn: { format: '1080p', ingestionType: 'rtmp' }
+        }
+      });
+
+      console.log('Broadcast Info:', broadcast.result);
+      console.log('Stream Info:', stream.result);
+      alert('Private live created! Check console for RTMP URL.');
+    }
+
+    document.getElementById('loginBtn').onclick = login;
+    document.getElementById('startLiveBtn').onclick = startPrivateLive;
+
+    initGAPI().then(initClient);
+  </script>
+</body>
+</html>
