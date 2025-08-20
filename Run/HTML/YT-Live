@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>YouTube Live Starter</title>
+  <!-- Load Tailwind CSS for modern styling -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* Use the Inter font, a modern and clean font */
+    body {
+      font-family: 'Inter', sans-serif;
+    }
+  </style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
+
+  <!-- Main container with a clean, rounded design -->
+  <div class="bg-white p-8 rounded-2xl shadow-xl max-w-lg w-full text-center">
+    <h1 class="text-3xl font-bold text-gray-800 mb-6">Private YouTube Live Starter</h1>
+    <p class="text-sm text-gray-600 mb-8">
+      This app uses the YouTube Data API to create a private live stream and provide you with the RTMP details.
+      You must log in with a Google account that has a verified YouTube channel.
+    </p>
+
+    <!-- UI Buttons -->
+    <div class="space-y-4 mb-6">
+      <button id="authorize_button" class="w-full px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 transition-colors duration-200">
+        Login with Google
+      </button>
+      <button id="signout_button" class="w-full px-6 py-3 bg-gray-400 text-gray-800 font-semibold rounded-xl hover:bg-gray-500 transition-colors duration-200" disabled>
+        Sign Out
+      </button>
+      <button id="create_live_button" class="w-full px-6 py-3 bg-green-600 text-white font-semibold rounded-xl hover:bg-green-700 transition-colors duration-200" disabled>
+        Create Private Live Stream
+      </button>
+    </div>
+
+    <!-- Status and message display area -->
+    <div id="status_message" class="text-sm text-gray-500 mb-6">Initializing...</div>
+
+    <!-- Live stream details display area -->
+    <div id="rtmp_info" class="hidden text-left bg-gray-50 p-6 rounded-xl border border-gray-200 mt-6">
+      <p class="text-gray-700 font-bold mb-2">Live Stream Details:</p>
+      <div class="space-y-2 text-gray-600 break-all">
+        <p><span class="font-semibold text-gray-800">Title:</span> <span id="stream_title"></span></p>
+        <p><span class="font-semibold text-gray-800">Privacy Status:</span> <span id="stream_privacy"></span></p>
+        <p><span class="font-semibold text-gray-800">RTMP Address:</span> <code id="rtmp_address" class="block bg-white p-2 rounded-lg mt-1 border border-gray-300"></code></p>
+        <p><span class="font-semibold text-gray-800">Stream Name/Key:</span> <code id="stream_key" class="block bg-white p-2 rounded-lg mt-1 border border-gray-300"></code></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Google API JavaScript Libraries -->
+  <script src="https://apis.google.com/js/api.js" async defer></script>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  
+  <script>
+    // --- Configuration ---
+    // The user has specified to keep these values as they are.
+    const CLIENT_ID = '1003156631157-5h2opc3au01ae6djhdli105tbkvjbctl.apps.googleusercontent.com';
+    const SCOPES = 'https://www.googleapis.com/auth/youtube.force-ssl';
+    const DISCOVERY_DOCS = ["https://www.googleapis.com/discovery/v1/apis/youtube/v3/rest"];
+
+    // --- Global Variables ---
+    let tokenClient;
+
+    // --- DOM Element Caching ---
+    const authButton = document.getElementById('authorize_button');
+    const signOutButton = document.getElementById('signout_button');
+    const createLiveButton = document.getElementById('create_live_button');
+    const statusMessage = document.getElementById('status_message');
+    const rtmpInfoDiv = document.getElementById('rtmp_info');
+    const streamTitleEl = document.getElementById('stream_title');
+    const streamPrivacyEl = document.getElementById('stream_privacy');
+    const rtmpAddressEl = document.getElementById('rtmp_address');
+    const streamKeyEl = document.getElementById('stream_key');
+
+    // --- Utility Functions ---
+    /**
+     * Updates the status message displayed to the user.
+     * @param {string} message The message to display.
+     */
+    function updateStatus(message) {
+      statusMessage.textContent = message;
+    }
+
+    /**
+     * Updates the UI elements based on the user's sign-in status.
+     * @param {boolean} isSignedIn True if the user is signed in.
+     */
+    function updateSigninStatus(isSignedIn) {
+      if (isSignedIn) {
+        authButton.style.display = 'none';
+        signOutButton.style.display = 'inline-block';
+        createLiveButton.disabled = false;
+        updateStatus('Logged in successfully!');
+      } else {
+        authButton.style.display = 'inline-block';
+        signOutButton.style.display = 'none';
+        createLiveButton.disabled = true;
+        updateStatus('Please log in to create a live stream.');
+        // Hide RTMP info if user signs out
+        rtmpInfoDiv.classList.add('hidden');
+      }
+    }
+
+    // --- Core API Functions ---
+
+    /**
+     * Initializes the Google API client and handles authentication state changes.
+     */
+    async function initGapiClient() {
+      await gapi.client.init({
+        clientId: CLIENT_ID,
+        discoveryDocs: DISCOVERY_DOCS,
+        scope: SCOPES
+      });
+      // Handle the initial sign-in state by checking for a valid access token
+      const isSignedIn = gapi.client.getToken() !== null;
+      updateSigninStatus(isSignedIn);
+    }
+    
+    /**
+     * Initializes the GIS token client for user authentication.
+     */
+    function initGisClient() {
+      tokenClient = google.accounts.oauth2.initTokenClient({
+        client_id: CLIENT_ID,
+        scope: SCOPES,
+        callback: (tokenResponse) => {
+          if (tokenResponse && tokenResponse.access_token) {
+            gapi.client.setToken(tokenResponse);
+            updateSigninStatus(true);
+          } else {
+            updateSigninStatus(false);
+          }
+        },
+      });
+    }
+
+    /**
+     * Handles the click event for the authorization button.
+     * This triggers the Google sign-in flow.
+     */
+    function handleAuthClick() {
+      if (gapi.client.getToken() === null) {
+        // Prompt the user for consent and get an access token
+        tokenClient.requestAccessToken({prompt: 'consent'});
+      } else {
+        // If an access token already exists, just refresh it without consent prompt
+        tokenClient.requestAccessToken({prompt: ''});
+      }
+    }
+
+    /**
+     * Handles the click event for the sign-out button.
+     * This revokes the current access token.
+     */
+    function handleSignoutClick() {
+      const token = gapi.client.getToken();
+      if (token !== null) {
+        google.accounts.oauth2.revoke(token.access_token, () => {
+          gapi.client.setToken('');
+          updateSigninStatus(false);
+          updateStatus('Signed out.');
+        });
+      }
+    }
+
+    /**
+     * Creates a new private live broadcast and a live stream.
+     * Retrieves and displays the RTMP ingestion details.
+     */
+    async function createLiveBroadcastAndStream() {
+      updateStatus('Creating live stream and broadcast...');
+      try {
+        // Step 1: Create the live broadcast (the event on YouTube)
+        const broadcastResponse = await gapi.client.youtube.liveBroadcasts.insert({
+          part: 'snippet,status',
+          resource: {
+            snippet: {
+              title: 'My Private Live Stream',
+              scheduledStartTime: new Date().toISOString(),
+              description: 'A private live stream created via API.'
+            },
+            status: {
+              privacyStatus: 'private',
+              selfDeclaredMadeForKids: false // Set to false unless the content is for kids
+            }
+          }
+        });
+        
+        const broadcastId = broadcastResponse.result.id;
+        
+        // Step 2: Create the live stream (the ingestion point)
+        const streamResponse = await gapi.client.youtube.liveStreams.insert({
+          part: 'snippet,cdn',
+          resource: {
+            snippet: {
+              title: 'My Live Stream Key'
+            },
+            cdn: {
+              format: '1080p',
+              ingestionType: 'rtmp'
+            }
+          }
+        });
+
+        const streamId = streamResponse.result.id;
+
+        // Step 3: Bind the broadcast to the stream
+        await gapi.client.youtube.liveBroadcasts.bind({
+          id: broadcastId,
+          part: 'id,contentDetails',
+          streamId: streamId
+        });
+        
+        updateStatus('Live stream successfully created and bound!');
+        
+        // Extract and display the RTMP details
+        const ingestionInfo = streamResponse.result.cdn.ingestionInfo;
+        const rtmpAddress = ingestionInfo.ingestionAddress;
+        const streamKey = ingestionInfo.streamName;
+        
+        streamTitleEl.textContent = broadcastResponse.result.snippet.title;
+        streamPrivacyEl.textContent = broadcastResponse.result.status.privacyStatus;
+        rtmpAddressEl.textContent = rtmpAddress;
+        streamKeyEl.textContent = streamKey;
+        rtmpInfoDiv.classList.remove('hidden');
+
+      } catch (error) {
+        console.error('Error creating live stream:', error.result);
+        updateStatus(`Error: ${error.result.error.message}. Check console for details.`);
+      }
+    }
+
+    // --- Event Listeners ---
+    authButton.onclick = handleAuthClick;
+    signOutButton.onclick = handleSignoutClick;
+    createLiveButton.onclick = createLiveBroadcastAndStream;
+
+    // --- Main Initialization ---
+    // The GIS and gapi libraries are loaded asynchronously.
+    // The GIS client must be initialized after the library loads.
+    window.onload = () => {
+      gapi.load('client', initGapiClient);
+      if (typeof google !== 'undefined' && google.accounts && google.accounts.oauth2) {
+        initGisClient();
+      } else {
+        // Fallback for slower loads
+        setTimeout(() => {
+          if (typeof google !== 'undefined' && google.accounts && google.accounts.oauth2) {
+            initGisClient();
+          } else {
+            updateStatus('Error: Failed to load Google Identity Services.');
+          }
+        }, 1000);
+      }
+    };
+  </script>
+</body>
+</html>
