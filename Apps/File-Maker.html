@@ -316,6 +316,25 @@
         .context-menu-item:hover {
             background-color: rgba(255, 255, 255, 0.1);
         }
+        
+        .auto-save-indicator {
+            color: var(--success-color);
+            font-size: 0.8rem;
+            margin-left: 10px;
+        }
+        
+        .search-box {
+            margin-bottom: 15px;
+        }
+        
+        .search-box input {
+            width: 100%;
+            padding: 8px 10px;
+            border-radius: 4px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background-color: rgba(255, 255, 255, 0.1);
+            color: white;
+        }
     </style>
 </head>
 <body>
@@ -326,6 +345,7 @@
                 <button id="newFolderBtn">New Folder</button>
                 <button id="newFileBtn">New File</button>
                 <button id="downloadBtn" class="success">Download as ZIP</button>
+                <button id="clearAllBtn" class="danger">Clear All</button>
             </div>
         </header>
         
@@ -333,6 +353,9 @@
             <div class="sidebar">
                 <div class="file-explorer">
                     <h3>File Explorer</h3>
+                    <div class="search-box">
+                        <input type="text" id="searchInput" placeholder="Search files...">
+                    </div>
                     <div class="breadcrumb" id="breadcrumb">
                         <span class="breadcrumb-item" data-id="root">Root</span>
                     </div>
@@ -340,19 +363,22 @@
                         <!-- Folder structure will be populated here -->
                     </ul>
                 </div>
-                <div class="file-count" id="fileCount">Files: 0/300</div>
+                <div class="file-count" id="fileCount">Files: <span id="fileCountValue">0</span></div>
             </div>
             
             <div class="editor-container">
                 <div class="editor-header">
-                    <div class="file-name" id="fileName">No file selected</div>
-                    <button id="saveFileBtn">Save File</button>
+                    <div class="file-name" id="fileName">No file selected <span class="auto-save-indicator" id="autoSaveIndicator">Auto-saved</span></div>
+                    <div>
+                        <button id="saveFileBtn">Save File</button>
+                        <button id="deleteFileBtn" class="danger">Delete File</button>
+                    </div>
                 </div>
                 <div class="editor">
                     <textarea id="codeEditor" placeholder="Select a file to edit or create a new file..." spellcheck="false"></textarea>
                 </div>
                 <div class="status-bar">
-                    <div>Total files: <span id="totalFiles">0</span>/300</div>
+                    <div>Total files: <span id="totalFiles">0</span></div>
                     <div>Current file: <span id="currentFileInfo">None</span></div>
                 </div>
             </div>
@@ -397,7 +423,7 @@
 
     <script>
         // Data structure to hold files and folders
-        const fileSystem = {
+        let fileSystem = {
             id: 'root',
             name: 'Root',
             type: 'folder',
@@ -409,15 +435,22 @@
         let currentFile = null;
         let fileCount = 0;
         let contextMenuTarget = null;
+        let autoSaveTimer = null;
+        let searchTerm = '';
+
+        // LocalStorage key
+        const STORAGE_KEY = 'codeEditorFileSystem';
 
         // DOM elements
         const folderStructure = document.getElementById('folderStructure');
         const codeEditor = document.getElementById('codeEditor');
         const fileName = document.getElementById('fileName');
-        const fileCountElement = document.getElementById('fileCount');
+        const fileCountElement = document.getElementById('fileCountValue');
         const totalFilesElement = document.getElementById('totalFiles');
         const currentFileInfo = document.getElementById('currentFileInfo');
         const breadcrumb = document.getElementById('breadcrumb');
+        const autoSaveIndicator = document.getElementById('autoSaveIndicator');
+        const searchInput = document.getElementById('searchInput');
         
         // Modal elements
         const folderModal = document.getElementById('folderModal');
@@ -430,6 +463,8 @@
         const newFileBtn = document.getElementById('newFileBtn');
         const downloadBtn = document.getElementById('downloadBtn');
         const saveFileBtn = document.getElementById('saveFileBtn');
+        const deleteFileBtn = document.getElementById('deleteFileBtn');
+        const clearAllBtn = document.getElementById('clearAllBtn');
         const createFolderBtn = document.getElementById('createFolderBtn');
         const cancelFolderBtn = document.getElementById('cancelFolderBtn');
         const createFileBtn = document.getElementById('createFileBtn');
@@ -440,9 +475,61 @@
 
         // Initialize the app
         function init() {
+            loadFromLocalStorage();
             renderFolderStructure();
             updateFileCount();
             attachEventListeners();
+            hideAutoSaveIndicator();
+        }
+
+        // Load file system from localStorage
+        function loadFromLocalStorage() {
+            const stored = localStorage.getItem(STORAGE_KEY);
+            if (stored) {
+                fileSystem = JSON.parse(stored);
+                currentFolder = fileSystem;
+                
+                // Recreate parent references
+                function recreateParentRefs(node, parent = null) {
+                    node.parent = parent;
+                    if (node.children) {
+                        node.children.forEach(child => recreateParentRefs(child, node));
+                    }
+                }
+                
+                recreateParentRefs(fileSystem);
+            }
+        }
+
+        // Save file system to localStorage
+        function saveToLocalStorage() {
+            // Remove parent references before saving to avoid circular references
+            function removeParentRefs(node) {
+                if (node.parent) {
+                    delete node.parent;
+                }
+                if (node.children) {
+                    node.children.forEach(child => removeParentRefs(child));
+                }
+                return node;
+            }
+            
+            const fileSystemCopy = JSON.parse(JSON.stringify(fileSystem));
+            removeParentRefs(fileSystemCopy);
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(fileSystemCopy));
+            
+            showAutoSaveIndicator();
+        }
+
+        // Show auto-save indicator
+        function showAutoSaveIndicator() {
+            autoSaveIndicator.style.display = 'inline';
+            setTimeout(hideAutoSaveIndicator, 2000);
+        }
+
+        // Hide auto-save indicator
+        function hideAutoSaveIndicator() {
+            autoSaveIndicator.style.display = 'none';
         }
 
         // Attach event listeners
@@ -461,6 +548,8 @@
             
             downloadBtn.addEventListener('click', downloadAsZip);
             saveFileBtn.addEventListener('click', saveCurrentFile);
+            deleteFileBtn.addEventListener('click', deleteCurrentFile);
+            clearAllBtn.addEventListener('click', clearAllFiles);
             
             createFolderBtn.addEventListener('click', createNewFolder);
             cancelFolderBtn.addEventListener('click', () => {
@@ -470,6 +559,25 @@
             createFileBtn.addEventListener('click', createNewFile);
             cancelFileBtn.addEventListener('click', () => {
                 fileModal.style.display = 'none';
+            });
+            
+            // Auto-save when typing in editor
+            codeEditor.addEventListener('input', () => {
+                if (currentFile) {
+                    currentFile.content = codeEditor.value;
+                    
+                    // Debounce the save to localStorage
+                    clearTimeout(autoSaveTimer);
+                    autoSaveTimer = setTimeout(() => {
+                        saveToLocalStorage();
+                    }, 1000);
+                }
+            });
+            
+            // Search functionality
+            searchInput.addEventListener('input', (e) => {
+                searchTerm = e.target.value.toLowerCase();
+                renderFolderStructure();
             });
             
             // Close modals when clicking outside
@@ -521,12 +629,24 @@
         function renderFolderStructure() {
             folderStructure.innerHTML = '';
             
-            if (currentFolder.children.length === 0) {
-                folderStructure.innerHTML = '<div class="empty-state"><p>This folder is empty</p></div>';
+            let itemsToShow = currentFolder.children;
+            
+            // Filter by search term if provided
+            if (searchTerm) {
+                itemsToShow = itemsToShow.filter(item => 
+                    item.name.toLowerCase().includes(searchTerm)
+                );
+            }
+            
+            if (itemsToShow.length === 0) {
+                const emptyMsg = searchTerm ? 
+                    'No files or folders match your search' : 
+                    'This folder is empty';
+                folderStructure.innerHTML = `<div class="empty-state"><p>${emptyMsg}</p></div>`;
                 return;
             }
             
-            currentFolder.children.forEach(item => {
+            itemsToShow.forEach(item => {
                 const li = document.createElement('li');
                 li.dataset.id = item.id;
                 
@@ -621,6 +741,7 @@
             currentFolder.children.push(newFolder);
             folderModal.style.display = 'none';
             renderFolderStructure();
+            saveToLocalStorage();
         }
 
         // Create a new file
@@ -629,12 +750,6 @@
             
             if (!name) {
                 alert('Please enter a file name');
-                return;
-            }
-            
-            // Check file count limit
-            if (fileCount >= 300) {
-                alert('Maximum file limit (300) reached');
                 return;
             }
             
@@ -654,10 +769,10 @@
             
             currentFolder.children.push(newFile);
             fileModal.style.display = 'none';
-            fileCount++;
             updateFileCount();
             renderFolderStructure();
             openFile(newFile);
+            saveToLocalStorage();
         }
 
         // Open a file for editing
@@ -684,18 +799,81 @@
             }
             
             currentFile.content = codeEditor.value;
-            alert('File saved successfully');
+            saveToLocalStorage();
+        }
+
+        // Delete the current file
+        function deleteCurrentFile() {
+            if (!currentFile) {
+                alert('No file selected');
+                return;
+            }
+            
+            if (!confirm(`Are you sure you want to delete "${currentFile.name}"?`)) {
+                return;
+            }
+            
+            // Remove from parent's children
+            const index = currentFolder.children.findIndex(child => child.id === currentFile.id);
+            if (index !== -1) {
+                currentFolder.children.splice(index, 1);
+                
+                // Clear the editor
+                currentFile = null;
+                codeEditor.value = '';
+                fileName.textContent = 'No file selected';
+                currentFileInfo.textContent = 'None';
+                
+                updateFileCount();
+                renderFolderStructure();
+                saveToLocalStorage();
+            }
+        }
+
+        // Clear all files and folders
+        function clearAllFiles() {
+            if (!confirm('Are you sure you want to delete ALL files and folders? This cannot be undone.')) {
+                return;
+            }
+            
+            fileSystem.children = [];
+            currentFolder = fileSystem;
+            currentFile = null;
+            codeEditor.value = '';
+            fileName.textContent = 'No file selected';
+            currentFileInfo.textContent = 'None';
+            
+            updateFileCount();
+            renderFolderStructure();
+            saveToLocalStorage();
+        }
+
+        // Count all files in the file system
+        function countFiles(node = fileSystem) {
+            let count = 0;
+            
+            if (node.type === 'file') {
+                count = 1;
+            } else if (node.children) {
+                node.children.forEach(child => {
+                    count += countFiles(child);
+                });
+            }
+            
+            return count;
         }
 
         // Update file count display
         function updateFileCount() {
-            fileCountElement.textContent = `Files: ${fileCount}/300`;
-            totalFilesElement.textContent = fileCount;
+            const count = countFiles();
+            fileCountElement.textContent = count;
+            totalFilesElement.textContent = count;
         }
 
         // Download all files as a zip
         function downloadAsZip() {
-            if (fileCount === 0) {
+            const count = countFiles();
+            if (count === 0) {
                 alert('No files to download');
                 return;
             }
@@ -758,6 +936,8 @@
                     fileName.textContent = item.name;
                     currentFileInfo.textContent = item.name;
                 }
+                
+                saveToLocalStorage();
             }
         }
 
@@ -777,12 +957,6 @@
             if (index !== -1) {
                 item.parent.children.splice(index, 1);
                 
-                // If it's a file, decrease file count
-                if (item.type === 'file') {
-                    fileCount--;
-                    updateFileCount();
-                }
-                
                 // If it's the current file, clear the editor
                 if (currentFile && currentFile.id === id) {
                     currentFile = null;
@@ -791,7 +965,9 @@
                     currentFileInfo.textContent = 'None';
                 }
                 
+                updateFileCount();
                 renderFolderStructure();
+                saveToLocalStorage();
             }
         }
 
