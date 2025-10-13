@@ -411,6 +411,17 @@
         .status-icon {
             font-size: 0.9rem;
         }
+        
+        .debug-info {
+            position: fixed;
+            bottom: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.7);
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            color: #ccc;
+        }
     </style>
 </head>
 <body>
@@ -425,7 +436,7 @@
             </div>
             
             <!-- Status Indicator -->
-            <div class="status-indicator" id="statusIndicator">
+            <div class="status-indicator saved" id="statusIndicator">
                 <span class="status-icon" id="statusIcon">✓</span>
                 <span id="statusText">Saved</span>
             </div>
@@ -510,6 +521,8 @@
         <div class="context-menu-item" data-action="delete"><span class="icon">🗑️</span> Delete</div>
     </div>
 
+    <div class="debug-info" id="debugInfo"></div>
+
     <script>
         // Data structure to hold files and folders
         let fileSystem = {
@@ -542,6 +555,7 @@
         const statusIndicator = document.getElementById('statusIndicator');
         const statusIcon = document.getElementById('statusIcon');
         const statusText = document.getElementById('statusText');
+        const debugInfo = document.getElementById('debugInfo');
         
         // Modal elements
         const folderModal = document.getElementById('folderModal');
@@ -566,11 +580,19 @@
 
         // Initialize the app
         function init() {
+            updateDebugInfo('Initializing...');
             loadFromLocalStorage();
             renderFolderStructure();
             updateFileCount();
             attachEventListeners();
             updateStatus('saved');
+            updateDebugInfo('Initialized successfully');
+        }
+
+        // Update debug information
+        function updateDebugInfo(message) {
+            debugInfo.textContent = message;
+            console.log(message);
         }
 
         // Update status indicator
@@ -595,13 +617,17 @@
                     statusText.textContent = 'Disconnected';
                     break;
             }
+            
+            updateDebugInfo(`Status: ${status}`);
         }
 
         // Load file system from localStorage
         function loadFromLocalStorage() {
-            const stored = localStorage.getItem(STORAGE_KEY);
-            if (stored) {
-                try {
+            updateDebugInfo('Loading from localStorage...');
+            try {
+                const stored = localStorage.getItem(STORAGE_KEY);
+                if (stored) {
+                    updateDebugInfo('Found stored data, parsing...');
                     const parsed = JSON.parse(stored);
                     fileSystem = parsed;
                     currentFolder = fileSystem;
@@ -615,46 +641,76 @@
                     }
                     
                     recreateParentRefs(fileSystem);
+                    updateDebugInfo('Loaded from localStorage successfully');
                     updateStatus('saved');
-                } catch (e) {
-                    console.error('Error loading from localStorage:', e);
-                    // If there's an error, start with a fresh file system
-                    fileSystem = {
-                        id: 'root',
-                        name: 'Root',
-                        type: 'folder',
-                        children: []
-                    };
-                    currentFolder = fileSystem;
-                    updateStatus('disconnected');
+                } else {
+                    updateDebugInfo('No stored data found, using default');
+                    updateStatus('saved');
                 }
-            } else {
-                updateStatus('saved');
+            } catch (e) {
+                updateDebugInfo(`Error loading from localStorage: ${e.message}`);
+                console.error('Error loading from localStorage:', e);
+                // If there's an error, start with a fresh file system
+                fileSystem = {
+                    id: 'root',
+                    name: 'Root',
+                    type: 'folder',
+                    children: []
+                };
+                currentFolder = fileSystem;
+                updateStatus('disconnected');
             }
         }
 
         // Save file system to localStorage
         function saveToLocalStorage() {
+            updateDebugInfo('Saving to localStorage...');
             try {
-                // Remove parent references before saving to avoid circular references
-                function removeParentRefs(node) {
-                    if (node.parent) {
-                        delete node.parent;
-                    }
+                // Create a clean copy without parent references
+                function createCleanCopy(node) {
+                    const cleanNode = {
+                        id: node.id,
+                        name: node.name,
+                        type: node.type
+                    };
+                    
                     if (node.children) {
-                        node.children.forEach(child => removeParentRefs(child));
+                        cleanNode.children = node.children.map(child => createCleanCopy(child));
+                    } else if (node.type === 'file') {
+                        cleanNode.content = node.content || '';
                     }
-                    return node;
+                    
+                    return cleanNode;
                 }
                 
-                const fileSystemCopy = JSON.parse(JSON.stringify(fileSystem));
-                removeParentRefs(fileSystemCopy);
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(fileSystemCopy));
+                const fileSystemCopy = createCleanCopy(fileSystem);
+                const serialized = JSON.stringify(fileSystemCopy);
                 
+                // Check if localStorage is available
+                if (typeof(Storage) === "undefined") {
+                    throw new Error('LocalStorage is not supported');
+                }
+                
+                localStorage.setItem(STORAGE_KEY, serialized);
+                updateDebugInfo('Saved to localStorage successfully');
                 updateStatus('saved');
             } catch (e) {
+                updateDebugInfo(`Error saving to localStorage: ${e.message}`);
                 console.error('Error saving to localStorage:', e);
                 updateStatus('disconnected');
+                
+                // Try to recover by clearing localStorage if it's full
+                if (e.name === 'QuotaExceededError' || e.code === 22) {
+                    updateDebugInfo('Storage quota exceeded, clearing localStorage...');
+                    try {
+                        localStorage.clear();
+                        updateDebugInfo('LocalStorage cleared, retrying save...');
+                        // Retry saving
+                        setTimeout(saveToLocalStorage, 100);
+                    } catch (clearError) {
+                        updateDebugInfo(`Error clearing localStorage: ${clearError.message}`);
+                    }
+                }
             }
         }
 
@@ -750,6 +806,19 @@
             fileNameInput.addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') {
                     createNewFile();
+                }
+            });
+            
+            // Test localStorage on load
+            window.addEventListener('load', () => {
+                updateDebugInfo('Testing localStorage...');
+                try {
+                    localStorage.setItem('test', 'test');
+                    localStorage.removeItem('test');
+                    updateDebugInfo('localStorage test passed');
+                } catch (e) {
+                    updateDebugInfo(`localStorage test failed: ${e.message}`);
+                    updateStatus('disconnected');
                 }
             });
         }
