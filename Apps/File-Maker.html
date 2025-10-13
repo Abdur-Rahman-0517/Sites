@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Code Editor with Folder Structure</title>
+    <title>Code Editor with Auto-Save</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <style>
@@ -14,6 +14,9 @@
             --light-color: #ecf0f1;
             --dark-color: #34495e;
             --success-color: #2ecc71;
+            --editor-bg: #1e1e1e;
+            --sidebar-bg: #252526;
+            --header-bg: #333333;
         }
         
         * {
@@ -24,31 +27,30 @@
         }
         
         body {
-            background-color: #1e272e;
+            background-color: var(--primary-color);
             color: var(--light-color);
             line-height: 1.6;
+            height: 100vh;
+            overflow: hidden;
         }
         
         .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 20px;
             display: flex;
             flex-direction: column;
             height: 100vh;
         }
         
         header {
+            background-color: var(--header-bg);
+            padding: 12px 20px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 15px 0;
-            border-bottom: 1px solid var(--dark-color);
-            margin-bottom: 20px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
         }
         
         .logo {
-            font-size: 1.8rem;
+            font-size: 1.5rem;
             font-weight: bold;
             color: var(--secondary-color);
         }
@@ -65,12 +67,16 @@
             padding: 8px 15px;
             border-radius: 4px;
             cursor: pointer;
-            transition: background-color 0.3s;
+            transition: all 0.3s;
             font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 5px;
         }
         
         button:hover {
             background-color: #2980b9;
+            transform: translateY(-2px);
         }
         
         button.danger {
@@ -92,48 +98,51 @@
         .main-content {
             display: flex;
             flex: 1;
-            gap: 20px;
             overflow: hidden;
         }
         
         .sidebar {
-            width: 300px;
-            background-color: var(--dark-color);
-            border-radius: 8px;
-            padding: 15px;
-            overflow-y: auto;
+            width: 280px;
+            background-color: var(--sidebar-bg);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
         }
         
         .editor-container {
             flex: 1;
             display: flex;
             flex-direction: column;
-            background-color: var(--dark-color);
-            border-radius: 8px;
+            background-color: var(--editor-bg);
             overflow: hidden;
         }
         
         .file-explorer {
-            margin-bottom: 20px;
+            padding: 15px;
+            flex: 1;
+            overflow-y: auto;
         }
         
         .file-explorer h3 {
-            margin-bottom: 10px;
+            margin-bottom: 15px;
             color: var(--secondary-color);
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
         
         .folder-structure {
             list-style-type: none;
-            padding-left: 10px;
         }
         
         .folder-structure li {
-            margin: 5px 0;
+            padding: 8px 10px;
             cursor: pointer;
-            padding: 5px;
             border-radius: 4px;
             display: flex;
             align-items: center;
+            margin-bottom: 2px;
+            transition: background-color 0.2s;
         }
         
         .folder-structure li:hover {
@@ -147,38 +156,45 @@
         .folder-icon, .file-icon {
             margin-right: 8px;
             font-size: 1.2rem;
+            width: 20px;
+            text-align: center;
         }
         
         .editor-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 10px 15px;
-            background-color: var(--primary-color);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 10px 20px;
+            background-color: #2d2d2d;
+            border-bottom: 1px solid #444;
         }
         
         .file-name {
             font-weight: 500;
             font-size: 1.1rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
         
         .editor {
             flex: 1;
             display: flex;
             flex-direction: column;
+            position: relative;
         }
         
         textarea {
             flex: 1;
-            background-color: #263238;
-            color: var(--light-color);
+            background-color: var(--editor-bg);
+            color: #d4d4d4;
             border: none;
-            padding: 15px;
+            padding: 20px;
             resize: none;
-            font-family: 'Courier New', monospace;
+            font-family: 'Consolas', 'Courier New', monospace;
             font-size: 14px;
             line-height: 1.5;
+            tab-size: 4;
         }
         
         textarea:focus {
@@ -186,13 +202,12 @@
         }
         
         .status-bar {
-            padding: 8px 15px;
-            background-color: var(--primary-color);
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 8px 20px;
+            background-color: #007acc;
             display: flex;
             justify-content: space-between;
-            font-size: 0.9rem;
-            color: #95a5a6;
+            font-size: 0.85rem;
+            color: white;
         }
         
         .modal {
@@ -209,11 +224,12 @@
         }
         
         .modal-content {
-            background-color: var(--dark-color);
+            background-color: var(--sidebar-bg);
             padding: 25px;
             border-radius: 8px;
             width: 400px;
             max-width: 90%;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
         }
         
         .modal h3 {
@@ -233,10 +249,10 @@
         
         .form-group input {
             width: 100%;
-            padding: 8px 10px;
+            padding: 10px;
             border-radius: 4px;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            background-color: rgba(255, 255, 255, 0.1);
+            border: 1px solid #555;
+            background-color: #3c3c3c;
             color: white;
         }
         
@@ -253,7 +269,9 @@
         }
         
         .file-count {
-            color: #95a5a6;
+            padding: 10px 15px;
+            background-color: #2d2d2d;
+            color: #ccc;
             font-size: 0.9rem;
         }
         
@@ -265,16 +283,12 @@
             height: 100%;
             text-align: center;
             padding: 20px;
+            color: #888;
         }
         
         .empty-state h3 {
             margin-bottom: 10px;
-            color: var(--secondary-color);
-        }
-        
-        .empty-state p {
-            color: #95a5a6;
-            margin-bottom: 20px;
+            color: #ccc;
         }
         
         .breadcrumb {
@@ -282,35 +296,42 @@
             align-items: center;
             margin-bottom: 15px;
             font-size: 0.9rem;
+            flex-wrap: wrap;
         }
         
         .breadcrumb-item {
             cursor: pointer;
             color: var(--secondary-color);
+            padding: 4px 8px;
+            border-radius: 4px;
         }
         
         .breadcrumb-item:hover {
-            text-decoration: underline;
+            background-color: rgba(255, 255, 255, 0.1);
         }
         
         .breadcrumb-separator {
             margin: 0 8px;
-            color: #95a5a6;
+            color: #777;
         }
         
         .context-menu {
             position: absolute;
-            background-color: var(--dark-color);
+            background-color: #3c3c3c;
             border-radius: 4px;
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
             z-index: 100;
             display: none;
+            min-width: 150px;
         }
         
         .context-menu-item {
             padding: 8px 15px;
             cursor: pointer;
             transition: background-color 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
         
         .context-menu-item:hover {
@@ -320,7 +341,12 @@
         .auto-save-indicator {
             color: var(--success-color);
             font-size: 0.8rem;
-            margin-left: 10px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        
+        .auto-save-indicator.visible {
+            opacity: 1;
         }
         
         .search-box {
@@ -329,30 +355,61 @@
         
         .search-box input {
             width: 100%;
-            padding: 8px 10px;
+            padding: 8px 12px;
             border-radius: 4px;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            background-color: rgba(255, 255, 255, 0.1);
+            border: 1px solid #555;
+            background-color: #3c3c3c;
             color: white;
+        }
+        
+        .welcome-panel {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100%;
+            text-align: center;
+            padding: 40px;
+            color: #888;
+        }
+        
+        .welcome-panel h2 {
+            margin-bottom: 15px;
+            color: var(--secondary-color);
+        }
+        
+        .welcome-panel p {
+            max-width: 500px;
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+        
+        .file-actions {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .icon {
+            font-size: 1.2rem;
         }
     </style>
 </head>
 <body>
     <div class="container">
         <header>
-            <div class="logo">Code Editor</div>
+            <div class="logo">📝 Code Editor</div>
             <div class="controls">
-                <button id="newFolderBtn">New Folder</button>
-                <button id="newFileBtn">New File</button>
-                <button id="downloadBtn" class="success">Download as ZIP</button>
-                <button id="clearAllBtn" class="danger">Clear All</button>
+                <button id="newFolderBtn"><span class="icon">📁</span> New Folder</button>
+                <button id="newFileBtn"><span class="icon">📄</span> New File</button>
+                <button id="downloadBtn" class="success"><span class="icon">📦</span> Download ZIP</button>
+                <button id="clearAllBtn" class="danger"><span class="icon">🗑️</span> Clear All</button>
             </div>
         </header>
         
         <div class="main-content">
             <div class="sidebar">
                 <div class="file-explorer">
-                    <h3>File Explorer</h3>
+                    <h3><span class="icon">📂</span> File Explorer</h3>
                     <div class="search-box">
                         <input type="text" id="searchInput" placeholder="Search files...">
                     </div>
@@ -368,14 +425,22 @@
             
             <div class="editor-container">
                 <div class="editor-header">
-                    <div class="file-name" id="fileName">No file selected <span class="auto-save-indicator" id="autoSaveIndicator">Auto-saved</span></div>
-                    <div>
-                        <button id="saveFileBtn">Save File</button>
-                        <button id="deleteFileBtn" class="danger">Delete File</button>
+                    <div class="file-name" id="fileName">
+                        <span>No file selected</span>
+                        <span class="auto-save-indicator" id="autoSaveIndicator">Auto-saved</span>
+                    </div>
+                    <div class="file-actions">
+                        <button id="saveFileBtn"><span class="icon">💾</span> Save</button>
+                        <button id="deleteFileBtn" class="danger"><span class="icon">❌</span> Delete</button>
                     </div>
                 </div>
                 <div class="editor">
-                    <textarea id="codeEditor" placeholder="Select a file to edit or create a new file..." spellcheck="false"></textarea>
+                    <div id="welcomePanel" class="welcome-panel">
+                        <h2>Welcome to Code Editor</h2>
+                        <p>Create folders and files to organize your code. Everything is automatically saved to your browser's local storage.</p>
+                        <p>Start by creating a new file or folder using the buttons above.</p>
+                    </div>
+                    <textarea id="codeEditor" placeholder="Select a file to edit or create a new file..." spellcheck="false" style="display: none;"></textarea>
                 </div>
                 <div class="status-bar">
                     <div>Total files: <span id="totalFiles">0</span></div>
@@ -417,8 +482,8 @@
     
     <!-- Context Menu -->
     <div class="context-menu" id="contextMenu">
-        <div class="context-menu-item" data-action="rename">Rename</div>
-        <div class="context-menu-item" data-action="delete">Delete</div>
+        <div class="context-menu-item" data-action="rename"><span class="icon">✏️</span> Rename</div>
+        <div class="context-menu-item" data-action="delete"><span class="icon">🗑️</span> Delete</div>
     </div>
 
     <script>
@@ -433,7 +498,6 @@
         // Current state
         let currentFolder = fileSystem;
         let currentFile = null;
-        let fileCount = 0;
         let contextMenuTarget = null;
         let autoSaveTimer = null;
         let searchTerm = '';
@@ -451,6 +515,7 @@
         const breadcrumb = document.getElementById('breadcrumb');
         const autoSaveIndicator = document.getElementById('autoSaveIndicator');
         const searchInput = document.getElementById('searchInput');
+        const welcomePanel = document.getElementById('welcomePanel');
         
         // Modal elements
         const folderModal = document.getElementById('folderModal');
@@ -486,50 +551,67 @@
         function loadFromLocalStorage() {
             const stored = localStorage.getItem(STORAGE_KEY);
             if (stored) {
-                fileSystem = JSON.parse(stored);
-                currentFolder = fileSystem;
-                
-                // Recreate parent references
-                function recreateParentRefs(node, parent = null) {
-                    node.parent = parent;
-                    if (node.children) {
-                        node.children.forEach(child => recreateParentRefs(child, node));
+                try {
+                    const parsed = JSON.parse(stored);
+                    fileSystem = parsed;
+                    currentFolder = fileSystem;
+                    
+                    // Recreate parent references
+                    function recreateParentRefs(node, parent = null) {
+                        node.parent = parent;
+                        if (node.children) {
+                            node.children.forEach(child => recreateParentRefs(child, node));
+                        }
                     }
+                    
+                    recreateParentRefs(fileSystem);
+                } catch (e) {
+                    console.error('Error loading from localStorage:', e);
+                    // If there's an error, start with a fresh file system
+                    fileSystem = {
+                        id: 'root',
+                        name: 'Root',
+                        type: 'folder',
+                        children: []
+                    };
+                    currentFolder = fileSystem;
                 }
-                
-                recreateParentRefs(fileSystem);
             }
         }
 
         // Save file system to localStorage
         function saveToLocalStorage() {
-            // Remove parent references before saving to avoid circular references
-            function removeParentRefs(node) {
-                if (node.parent) {
-                    delete node.parent;
+            try {
+                // Remove parent references before saving to avoid circular references
+                function removeParentRefs(node) {
+                    if (node.parent) {
+                        delete node.parent;
+                    }
+                    if (node.children) {
+                        node.children.forEach(child => removeParentRefs(child));
+                    }
+                    return node;
                 }
-                if (node.children) {
-                    node.children.forEach(child => removeParentRefs(child));
-                }
-                return node;
+                
+                const fileSystemCopy = JSON.parse(JSON.stringify(fileSystem));
+                removeParentRefs(fileSystemCopy);
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(fileSystemCopy));
+                
+                showAutoSaveIndicator();
+            } catch (e) {
+                console.error('Error saving to localStorage:', e);
             }
-            
-            const fileSystemCopy = JSON.parse(JSON.stringify(fileSystem));
-            removeParentRefs(fileSystemCopy);
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(fileSystemCopy));
-            
-            showAutoSaveIndicator();
         }
 
         // Show auto-save indicator
         function showAutoSaveIndicator() {
-            autoSaveIndicator.style.display = 'inline';
+            autoSaveIndicator.classList.add('visible');
             setTimeout(hideAutoSaveIndicator, 2000);
         }
 
         // Hide auto-save indicator
         function hideAutoSaveIndicator() {
-            autoSaveIndicator.style.display = 'none';
+            autoSaveIndicator.classList.remove('visible');
         }
 
         // Attach event listeners
@@ -646,6 +728,14 @@
                 return;
             }
             
+            // Sort folders first, then files
+            itemsToShow.sort((a, b) => {
+                if (a.type === b.type) {
+                    return a.name.localeCompare(b.name);
+                }
+                return a.type === 'folder' ? -1 : 1;
+            });
+            
             itemsToShow.forEach(item => {
                 const li = document.createElement('li');
                 li.dataset.id = item.id;
@@ -699,7 +789,7 @@
                 if (index < path.length - 1) {
                     const separator = document.createElement('span');
                     separator.className = 'breadcrumb-separator';
-                    separator.textContent = '>';
+                    separator.textContent = '›';
                     breadcrumb.appendChild(separator);
                 }
             });
@@ -710,8 +800,10 @@
             currentFolder = folder;
             currentFile = null;
             codeEditor.value = '';
-            fileName.textContent = 'No file selected';
+            fileName.innerHTML = '<span>No file selected</span>';
             currentFileInfo.textContent = 'None';
+            codeEditor.style.display = 'none';
+            welcomePanel.style.display = 'flex';
             renderFolderStructure();
         }
 
@@ -779,8 +871,10 @@
         function openFile(file) {
             currentFile = file;
             codeEditor.value = file.content;
-            fileName.textContent = file.name;
+            fileName.innerHTML = `<span>${file.name}</span>`;
             currentFileInfo.textContent = file.name;
+            codeEditor.style.display = 'block';
+            welcomePanel.style.display = 'none';
             
             // Highlight active file in the file explorer
             document.querySelectorAll('.folder-structure li').forEach(li => {
@@ -821,8 +915,10 @@
                 // Clear the editor
                 currentFile = null;
                 codeEditor.value = '';
-                fileName.textContent = 'No file selected';
+                fileName.innerHTML = '<span>No file selected</span>';
                 currentFileInfo.textContent = 'None';
+                codeEditor.style.display = 'none';
+                welcomePanel.style.display = 'flex';
                 
                 updateFileCount();
                 renderFolderStructure();
@@ -840,8 +936,10 @@
             currentFolder = fileSystem;
             currentFile = null;
             codeEditor.value = '';
-            fileName.textContent = 'No file selected';
+            fileName.innerHTML = '<span>No file selected</span>';
             currentFileInfo.textContent = 'None';
+            codeEditor.style.display = 'none';
+            welcomePanel.style.display = 'flex';
             
             updateFileCount();
             renderFolderStructure();
@@ -933,7 +1031,7 @@
                 
                 // If it's the current file, update the file name display
                 if (currentFile && currentFile.id === item.id) {
-                    fileName.textContent = item.name;
+                    fileName.innerHTML = `<span>${item.name}</span>`;
                     currentFileInfo.textContent = item.name;
                 }
                 
@@ -961,8 +1059,10 @@
                 if (currentFile && currentFile.id === id) {
                     currentFile = null;
                     codeEditor.value = '';
-                    fileName.textContent = 'No file selected';
+                    fileName.innerHTML = '<span>No file selected</span>';
                     currentFileInfo.textContent = 'None';
+                    codeEditor.style.display = 'none';
+                    welcomePanel.style.display = 'flex';
                 }
                 
                 updateFileCount();
