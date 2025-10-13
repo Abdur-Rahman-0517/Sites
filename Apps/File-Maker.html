@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Code Editor with Auto-Save</title>
+    <title>Code Editor with Status Indicator</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <style>
@@ -14,6 +14,7 @@
             --light-color: #ecf0f1;
             --dark-color: #34495e;
             --success-color: #2ecc71;
+            --warning-color: #f39c12;
             --editor-bg: #1e1e1e;
             --sidebar-bg: #252526;
             --header-bg: #333333;
@@ -47,6 +48,7 @@
             justify-content: space-between;
             align-items: center;
             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            position: relative;
         }
         
         .logo {
@@ -286,11 +288,6 @@
             color: #888;
         }
         
-        .empty-state h3 {
-            margin-bottom: 10px;
-            color: #ccc;
-        }
-        
         .breadcrumb {
             display: flex;
             align-items: center;
@@ -338,17 +335,6 @@
             background-color: rgba(255, 255, 255, 0.1);
         }
         
-        .auto-save-indicator {
-            color: var(--success-color);
-            font-size: 0.8rem;
-            opacity: 0;
-            transition: opacity 0.3s;
-        }
-        
-        .auto-save-indicator.visible {
-            opacity: 1;
-        }
-        
         .search-box {
             margin-bottom: 15px;
         }
@@ -392,6 +378,39 @@
         .icon {
             font-size: 1.2rem;
         }
+        
+        /* Status Indicator Styles */
+        .status-indicator {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 4px 12px;
+            border-radius: 0 0 4px 4px;
+            font-size: 0.8rem;
+            z-index: 10;
+            transition: all 0.3s ease;
+        }
+        
+        .status-indicator.saved {
+            background-color: rgba(46, 204, 113, 0.8);
+        }
+        
+        .status-indicator.updating {
+            background-color: rgba(243, 156, 18, 0.8);
+        }
+        
+        .status-indicator.disconnected {
+            background-color: rgba(231, 76, 60, 0.8);
+        }
+        
+        .status-icon {
+            font-size: 0.9rem;
+        }
     </style>
 </head>
 <body>
@@ -403,6 +422,12 @@
                 <button id="newFileBtn"><span class="icon">📄</span> New File</button>
                 <button id="downloadBtn" class="success"><span class="icon">📦</span> Download ZIP</button>
                 <button id="clearAllBtn" class="danger"><span class="icon">🗑️</span> Clear All</button>
+            </div>
+            
+            <!-- Status Indicator -->
+            <div class="status-indicator" id="statusIndicator">
+                <span class="status-icon" id="statusIcon">✓</span>
+                <span id="statusText">Saved</span>
             </div>
         </header>
         
@@ -427,7 +452,6 @@
                 <div class="editor-header">
                     <div class="file-name" id="fileName">
                         <span>No file selected</span>
-                        <span class="auto-save-indicator" id="autoSaveIndicator">Auto-saved</span>
                     </div>
                     <div class="file-actions">
                         <button id="saveFileBtn"><span class="icon">💾</span> Save</button>
@@ -513,9 +537,11 @@
         const totalFilesElement = document.getElementById('totalFiles');
         const currentFileInfo = document.getElementById('currentFileInfo');
         const breadcrumb = document.getElementById('breadcrumb');
-        const autoSaveIndicator = document.getElementById('autoSaveIndicator');
         const searchInput = document.getElementById('searchInput');
         const welcomePanel = document.getElementById('welcomePanel');
+        const statusIndicator = document.getElementById('statusIndicator');
+        const statusIcon = document.getElementById('statusIcon');
+        const statusText = document.getElementById('statusText');
         
         // Modal elements
         const folderModal = document.getElementById('folderModal');
@@ -544,7 +570,31 @@
             renderFolderStructure();
             updateFileCount();
             attachEventListeners();
-            hideAutoSaveIndicator();
+            updateStatus('saved');
+        }
+
+        // Update status indicator
+        function updateStatus(status) {
+            // Remove all status classes
+            statusIndicator.classList.remove('saved', 'updating', 'disconnected');
+            
+            switch(status) {
+                case 'saved':
+                    statusIndicator.classList.add('saved');
+                    statusIcon.textContent = '✓';
+                    statusText.textContent = 'Saved';
+                    break;
+                case 'updating':
+                    statusIndicator.classList.add('updating');
+                    statusIcon.textContent = '⟳';
+                    statusText.textContent = 'Updating...';
+                    break;
+                case 'disconnected':
+                    statusIndicator.classList.add('disconnected');
+                    statusIcon.textContent = '✗';
+                    statusText.textContent = 'Disconnected';
+                    break;
+            }
         }
 
         // Load file system from localStorage
@@ -565,6 +615,7 @@
                     }
                     
                     recreateParentRefs(fileSystem);
+                    updateStatus('saved');
                 } catch (e) {
                     console.error('Error loading from localStorage:', e);
                     // If there's an error, start with a fresh file system
@@ -575,7 +626,10 @@
                         children: []
                     };
                     currentFolder = fileSystem;
+                    updateStatus('disconnected');
                 }
+            } else {
+                updateStatus('saved');
             }
         }
 
@@ -597,21 +651,11 @@
                 removeParentRefs(fileSystemCopy);
                 localStorage.setItem(STORAGE_KEY, JSON.stringify(fileSystemCopy));
                 
-                showAutoSaveIndicator();
+                updateStatus('saved');
             } catch (e) {
                 console.error('Error saving to localStorage:', e);
+                updateStatus('disconnected');
             }
-        }
-
-        // Show auto-save indicator
-        function showAutoSaveIndicator() {
-            autoSaveIndicator.classList.add('visible');
-            setTimeout(hideAutoSaveIndicator, 2000);
-        }
-
-        // Hide auto-save indicator
-        function hideAutoSaveIndicator() {
-            autoSaveIndicator.classList.remove('visible');
         }
 
         // Attach event listeners
@@ -647,6 +691,9 @@
             codeEditor.addEventListener('input', () => {
                 if (currentFile) {
                     currentFile.content = codeEditor.value;
+                    
+                    // Update status to "Updating"
+                    updateStatus('updating');
                     
                     // Debounce the save to localStorage
                     clearTimeout(autoSaveTimer);
