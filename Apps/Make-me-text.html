@@ -1,1 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Folder to Text File Converter</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
 
+        body {
+            background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+            color: #333;
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 800px;
+            background-color: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            padding: 30px;
+            margin: 20px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #2575fc;
+            margin-bottom: 10px;
+            font-size: 2.2rem;
+        }
+
+        .description {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #666;
+            line-height: 1.5;
+        }
+
+        .upload-area {
+            border: 3px dashed #6a11cb;
+            border-radius: 10px;
+            padding: 40px 20px;
+            text-align: center;
+            margin-bottom: 30px;
+            transition: all 0.3s ease;
+            background-color: #f8f9ff;
+            cursor: pointer;
+        }
+
+        .upload-area:hover {
+            background-color: #f0f3ff;
+            border-color: #2575fc;
+        }
+
+        .upload-area.highlight {
+            background-color: #e6eeff;
+            border-color: #2575fc;
+        }
+
+        .upload-icon {
+            font-size: 60px;
+            color: #6a11cb;
+            margin-bottom: 15px;
+        }
+
+        .upload-text {
+            font-size: 18px;
+            color: #555;
+            margin-bottom: 10px;
+        }
+
+        .upload-hint {
+            color: #888;
+            font-size: 14px;
+        }
+
+        #folderInput {
+            display: none;
+        }
+
+        .file-list {
+            margin-top: 30px;
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            background-color: #f9f9f9;
+            display: none;
+        }
+
+        .file-list h3 {
+            margin-bottom: 15px;
+            color: #2575fc;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 8px;
+        }
+
+        .file-item {
+            padding: 8px 12px;
+            margin-bottom: 8px;
+            background-color: white;
+            border-radius: 6px;
+            border-left: 4px solid #6a11cb;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .file-name {
+            font-weight: 500;
+            color: #333;
+        }
+
+        .file-size {
+            color: #888;
+            font-size: 14px;
+        }
+
+        .actions {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        button {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        #processBtn {
+            background-color: #6a11cb;
+            color: white;
+        }
+
+        #processBtn:hover {
+            background-color: #5a0db5;
+            transform: translateY(-2px);
+        }
+
+        #processBtn:disabled {
+            background-color: #aaa;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        #downloadBtn {
+            background-color: #2575fc;
+            color: white;
+            display: none;
+        }
+
+        #downloadBtn:hover {
+            background-color: #1c68e0;
+            transform: translateY(-2px);
+        }
+
+        .progress-container {
+            margin-top: 20px;
+            display: none;
+        }
+
+        .progress-bar {
+            height: 10px;
+            background-color: #e0e0e0;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+
+        .progress {
+            height: 100%;
+            background-color: #6a11cb;
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .status {
+            text-align: center;
+            margin-top: 10px;
+            color: #666;
+            font-size: 14px;
+        }
+
+        .note {
+            margin-top: 25px;
+            padding: 15px;
+            background-color: #fff9e6;
+            border-radius: 8px;
+            border-left: 4px solid #ffc107;
+            font-size: 14px;
+            color: #856404;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 20px;
+            }
+            
+            h1 {
+                font-size: 1.8rem;
+            }
+            
+            .upload-area {
+                padding: 30px 15px;
+            }
+            
+            .actions {
+                flex-direction: column;
+            }
+            
+            button {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Folder to Text File Converter</h1>
+        <p class="description">Upload a folder to generate a text file containing all file names and their contents in the specified format.</p>
+        
+        <div class="upload-area" id="dropArea">
+            <div class="upload-icon">📁</div>
+            <p class="upload-text">Click to select a folder or drag and drop it here</p>
+            <p class="upload-hint">Note: Only files (not folders) will be included in the output</p>
+            <input type="file" id="folderInput" webkitdirectory directory multiple>
+        </div>
+        
+        <div class="file-list" id="fileList">
+            <h3>Selected Files</h3>
+            <div id="fileItems"></div>
+        </div>
+        
+        <div class="progress-container" id="progressContainer">
+            <div class="progress-bar">
+                <div class="progress" id="progressBar"></div>
+            </div>
+            <div class="status" id="statusText">Processing files...</div>
+        </div>
+        
+        <div class="actions">
+            <button id="processBtn" disabled>
+                <span>Process Files</span>
+            </button>
+            <button id="downloadBtn">
+                <span>Download Text File</span>
+            </button>
+        </div>
+        
+        <div class="note">
+            <strong>Format:</strong> Each file will be listed with its name, followed by its full path, then its content, separated by five blank lines.
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const folderInput = document.getElementById('folderInput');
+            const dropArea = document.getElementById('dropArea');
+            const processBtn = document.getElementById('processBtn');
+            const downloadBtn = document.getElementById('downloadBtn');
+            const fileList = document.getElementById('fileList');
+            const fileItems = document.getElementById('fileItems');
+            const progressContainer = document.getElementById('progressContainer');
+            const progressBar = document.getElementById('progressBar');
+            const statusText = document.getElementById('statusText');
+            
+            let files = [];
+            let outputText = '';
+            
+            // Handle folder selection
+            dropArea.addEventListener('click', () => {
+                folderInput.click();
+            });
+            
+            folderInput.addEventListener('change', (e) => {
+                files = Array.from(e.target.files);
+                updateFileList();
+            });
+            
+            // Drag and drop functionality
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                dropArea.addEventListener(eventName, preventDefaults, false);
+            });
+            
+            function preventDefaults(e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+            
+            ['dragenter', 'dragover'].forEach(eventName => {
+                dropArea.addEventListener(eventName, highlight, false);
+            });
+            
+            ['dragleave', 'drop'].forEach(eventName => {
+                dropArea.addEventListener(eventName, unhighlight, false);
+            });
+            
+            function highlight() {
+                dropArea.classList.add('highlight');
+            }
+            
+            function unhighlight() {
+                dropArea.classList.remove('highlight');
+            }
+            
+            dropArea.addEventListener('drop', handleDrop, false);
+            
+            function handleDrop(e) {
+                const dt = e.dataTransfer;
+                const droppedFiles = dt.files;
+                
+                if (droppedFiles.length > 0) {
+                    files = Array.from(droppedFiles);
+                    updateFileList();
+                }
+            }
+            
+            // Update the file list display
+            function updateFileList() {
+                if (files.length === 0) {
+                    fileList.style.display = 'none';
+                    processBtn.disabled = true;
+                    return;
+                }
+                
+                fileItems.innerHTML = '';
+                files.forEach(file => {
+                    const fileItem = document.createElement('div');
+                    fileItem.className = 'file-item';
+                    
+                    const fileName = document.createElement('div');
+                    fileName.className = 'file-name';
+                    fileName.textContent = file.webkitRelativePath || file.name;
+                    
+                    const fileSize = document.createElement('div');
+                    fileSize.className = 'file-size';
+                    fileSize.textContent = formatFileSize(file.size);
+                    
+                    fileItem.appendChild(fileName);
+                    fileItem.appendChild(fileSize);
+                    fileItems.appendChild(fileItem);
+                });
+                
+                fileList.style.display = 'block';
+                processBtn.disabled = false;
+            }
+            
+            // Format file size
+            function formatFileSize(bytes) {
+                if (bytes === 0) return '0 Bytes';
+                
+                const k = 1024;
+                const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                
+                return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+            }
+            
+            // Process files and generate text content
+            processBtn.addEventListener('click', async () => {
+                if (files.length === 0) return;
+                
+                progressContainer.style.display = 'block';
+                processBtn.disabled = true;
+                outputText = '';
+                
+                let processedCount = 0;
+                
+                for (const file of files) {
+                    try {
+                        const content = await readFileAsText(file);
+                        const fileName = file.name;
+                        const filePath = file.webkitRelativePath || file.name;
+                        
+                        // Format: File name, then file path, then content, then 5 blank lines
+                        outputText += `${fileName}\n/${filePath}\n${content}\n\n\n\n\n`;
+                        
+                        processedCount++;
+                        const progress = (processedCount / files.length) * 100;
+                        progressBar.style.width = `${progress}%`;
+                        statusText.textContent = `Processed ${processedCount} of ${files.length} files`;
+                    } catch (error) {
+                        console.error(`Error reading file ${file.name}:`, error);
+                    }
+                }
+                
+                statusText.textContent = `Processing complete! Ready to download.`;
+                downloadBtn.style.display = 'flex';
+                processBtn.disabled = false;
+            });
+            
+            // Read file as text
+            function readFileAsText(file) {
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    
+                    reader.onload = function(e) {
+                        resolve(e.target.result);
+                    };
+                    
+                    reader.onerror = function(e) {
+                        reject(new Error('Failed to read file'));
+                    };
+                    
+                    reader.readAsText(file);
+                });
+            }
+            
+            // Download the generated text file
+            downloadBtn.addEventListener('click', () => {
+                const blob = new Blob([outputText], { type: 'text/plain' });
+                const url = URL.createObjectURL(blob);
+                
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'folder_contents.txt';
+                document.body.appendChild(a);
+                a.click();
+                
+                setTimeout(() => {
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                }, 100);
+            });
+        });
+    </script>
+</body>
+</html>
