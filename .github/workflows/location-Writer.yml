@@ -1,0 +1,34 @@
+name: Generate File Locations
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:  # Manual trigger option
+
+jobs:
+  generate-file-locations:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Generate file locations list
+        run: |
+          # txt ফাইলের নাম
+          FILE_LIST="file_locations.txt"
+
+          # আগের ফাইল থাকলে মুছে দাও
+          [ -f "$FILE_LIST" ] && rm "$FILE_LIST"
+
+          # সব ফাইলের path লিখো txt ফাইলে
+          find . -type f -not -path "./.git/*" > "$FILE_LIST"
+
+      - name: Commit and push file list
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          
+          git add file_locations.txt
+          git commit -m "Update file locations list" || echo "No changes to commit"
+          git push
