@@ -91,6 +91,8 @@
       display: flex;
       align-items: center;
       gap: 15px;
+      flex: 1;
+      justify-content: center;
     }
 
     .nav-btn {
@@ -248,7 +250,8 @@
     }
 
     .empty-cell {
-      background-color: #f9f9f9;
+      background-color: transparent;
+      border: none;
     }
 
     .event-indicator {
@@ -457,22 +460,7 @@
       <p>Please select your country to load relevant holidays:</p>
       <select class="country-select" id="countrySelect">
         <option value="">Select a country</option>
-        <option value="US">United States</option>
-        <option value="GB">United Kingdom</option>
-        <option value="CA">Canada</option>
-        <option value="AU">Australia</option>
-        <option value="IN">India</option>
-        <option value="DE">Germany</option>
-        <option value="FR">France</option>
-        <option value="JP">Japan</option>
-        <option value="BR">Brazil</option>
-        <option value="ZA">South Africa</option>
-        <option value="MX">Mexico</option>
-        <option value="IT">Italy</option>
-        <option value="ES">Spain</option>
-        <option value="KR">South Korea</option>
-        <option value="CN">China</option>
-        <option value="RU">Russia</option>
+        <!-- Countries will be populated by JavaScript -->
       </select>
       <button onclick="saveCountry()">Save & Continue</button>
     </div>
@@ -536,22 +524,7 @@
       <div class="control-group">
         <label for="countryChange">Change Country</label>
         <select id="countryChange" onchange="changeCountry()">
-          <option value="US">United States</option>
-          <option value="GB">United Kingdom</option>
-          <option value="CA">Canada</option>
-          <option value="AU">Australia</option>
-          <option value="IN">India</option>
-          <option value="DE">Germany</option>
-          <option value="FR">France</option>
-          <option value="JP">Japan</option>
-          <option value="BR">Brazil</option>
-          <option value="ZA">South Africa</option>
-          <option value="MX">Mexico</option>
-          <option value="IT">Italy</option>
-          <option value="ES">Spain</option>
-          <option value="KR">South Korea</option>
-          <option value="CN">China</option>
-          <option value="RU">Russia</option>
+          <!-- Countries will be populated by JavaScript -->
         </select>
       </div>
     </div>
@@ -617,6 +590,226 @@
     let updateInterval;
     let userCountry = localStorage.getItem('userCountry') || '';
 
+    // Country list with all countries
+    const countries = [
+      {code: "AF", name: "Afghanistan"},
+      {code: "AL", name: "Albania"},
+      {code: "DZ", name: "Algeria"},
+      {code: "AD", name: "Andorra"},
+      {code: "AO", name: "Angola"},
+      {code: "AG", name: "Antigua and Barbuda"},
+      {code: "AR", name: "Argentina"},
+      {code: "AM", name: "Armenia"},
+      {code: "AU", name: "Australia"},
+      {code: "AT", name: "Austria"},
+      {code: "AZ", name: "Azerbaijan"},
+      {code: "BS", name: "Bahamas"},
+      {code: "BH", name: "Bahrain"},
+      {code: "BD", name: "Bangladesh"},
+      {code: "BB", name: "Barbados"},
+      {code: "BY", name: "Belarus"},
+      {code: "BE", name: "Belgium"},
+      {code: "BZ", name: "Belize"},
+      {code: "BJ", name: "Benin"},
+      {code: "BT", name: "Bhutan"},
+      {code: "BO", name: "Bolivia"},
+      {code: "BA", name: "Bosnia and Herzegovina"},
+      {code: "BW", name: "Botswana"},
+      {code: "BR", name: "Brazil"},
+      {code: "BN", name: "Brunei"},
+      {code: "BG", name: "Bulgaria"},
+      {code: "BF", name: "Burkina Faso"},
+      {code: "BI", name: "Burundi"},
+      {code: "CV", name: "Cabo Verde"},
+      {code: "KH", name: "Cambodia"},
+      {code: "CM", name: "Cameroon"},
+      {code: "CA", name: "Canada"},
+      {code: "CF", name: "Central African Republic"},
+      {code: "TD", name: "Chad"},
+      {code: "CL", name: "Chile"},
+      {code: "CN", name: "China"},
+      {code: "CO", name: "Colombia"},
+      {code: "KM", name: "Comoros"},
+      {code: "CG", name: "Congo"},
+      {code: "CR", name: "Costa Rica"},
+      {code: "HR", name: "Croatia"},
+      {code: "CU", name: "Cuba"},
+      {code: "CY", name: "Cyprus"},
+      {code: "CZ", name: "Czech Republic"},
+      {code: "DK", name: "Denmark"},
+      {code: "DJ", name: "Djibouti"},
+      {code: "DM", name: "Dominica"},
+      {code: "DO", name: "Dominican Republic"},
+      {code: "EC", name: "Ecuador"},
+      {code: "EG", name: "Egypt"},
+      {code: "SV", name: "El Salvador"},
+      {code: "GQ", name: "Equatorial Guinea"},
+      {code: "ER", name: "Eritrea"},
+      {code: "EE", name: "Estonia"},
+      {code: "SZ", name: "Eswatini"},
+      {code: "ET", name: "Ethiopia"},
+      {code: "FJ", name: "Fiji"},
+      {code: "FI", name: "Finland"},
+      {code: "FR", name: "France"},
+      {code: "GA", name: "Gabon"},
+      {code: "GM", name: "Gambia"},
+      {code: "GE", name: "Georgia"},
+      {code: "DE", name: "Germany"},
+      {code: "GH", name: "Ghana"},
+      {code: "GR", name: "Greece"},
+      {code: "GD", name: "Grenada"},
+      {code: "GT", name: "Guatemala"},
+      {code: "GN", name: "Guinea"},
+      {code: "GW", name: "Guinea-Bissau"},
+      {code: "GY", name: "Guyana"},
+      {code: "HT", name: "Haiti"},
+      {code: "HN", name: "Honduras"},
+      {code: "HU", name: "Hungary"},
+      {code: "IS", name: "Iceland"},
+      {code: "IN", name: "India"},
+      {code: "ID", name: "Indonesia"},
+      {code: "IR", name: "Iran"},
+      {code: "IQ", name: "Iraq"},
+      {code: "IE", name: "Ireland"},
+      {code: "IL", name: "Israel"},
+      {code: "IT", name: "Italy"},
+      {code: "JM", name: "Jamaica"},
+      {code: "JP", name: "Japan"},
+      {code: "JO", name: "Jordan"},
+      {code: "KZ", name: "Kazakhstan"},
+      {code: "KE", name: "Kenya"},
+      {code: "KI", name: "Kiribati"},
+      {code: "KP", name: "North Korea"},
+      {code: "KR", name: "South Korea"},
+      {code: "KW", name: "Kuwait"},
+      {code: "KG", name: "Kyrgyzstan"},
+      {code: "LA", name: "Laos"},
+      {code: "LV", name: "Latvia"},
+      {code: "LB", name: "Lebanon"},
+      {code: "LS", name: "Lesotho"},
+      {code: "LR", name: "Liberia"},
+      {code: "LY", name: "Libya"},
+      {code: "LI", name: "Liechtenstein"},
+      {code: "LT", name: "Lithuania"},
+      {code: "LU", name: "Luxembourg"},
+      {code: "MG", name: "Madagascar"},
+      {code: "MW", name: "Malawi"},
+      {code: "MY", name: "Malaysia"},
+      {code: "MV", name: "Maldives"},
+      {code: "ML", name: "Mali"},
+      {code: "MT", name: "Malta"},
+      {code: "MH", name: "Marshall Islands"},
+      {code: "MR", name: "Mauritania"},
+      {code: "MU", name: "Mauritius"},
+      {code: "MX", name: "Mexico"},
+      {code: "FM", name: "Micronesia"},
+      {code: "MD", name: "Moldova"},
+      {code: "MC", name: "Monaco"},
+      {code: "MN", name: "Mongolia"},
+      {code: "ME", name: "Montenegro"},
+      {code: "MA", name: "Morocco"},
+      {code: "MZ", name: "Mozambique"},
+      {code: "MM", name: "Myanmar"},
+      {code: "NA", name: "Namibia"},
+      {code: "NR", name: "Nauru"},
+      {code: "NP", name: "Nepal"},
+      {code: "NL", name: "Netherlands"},
+      {code: "NZ", name: "New Zealand"},
+      {code: "NI", name: "Nicaragua"},
+      {code: "NE", name: "Niger"},
+      {code: "NG", name: "Nigeria"},
+      {code: "MK", name: "North Macedonia"},
+      {code: "NO", name: "Norway"},
+      {code: "OM", name: "Oman"},
+      {code: "PK", name: "Pakistan"},
+      {code: "PW", name: "Palau"},
+      {code: "PS", name: "Palestine"},
+      {code: "PA", name: "Panama"},
+      {code: "PG", name: "Papua New Guinea"},
+      {code: "PY", name: "Paraguay"},
+      {code: "PE", name: "Peru"},
+      {code: "PH", name: "Philippines"},
+      {code: "PL", name: "Poland"},
+      {code: "PT", name: "Portugal"},
+      {code: "QA", name: "Qatar"},
+      {code: "RO", name: "Romania"},
+      {code: "RU", name: "Russia"},
+      {code: "RW", name: "Rwanda"},
+      {code: "KN", name: "Saint Kitts and Nevis"},
+      {code: "LC", name: "Saint Lucia"},
+      {code: "VC", name: "Saint Vincent and the Grenadines"},
+      {code: "WS", name: "Samoa"},
+      {code: "SM", name: "San Marino"},
+      {code: "ST", name: "Sao Tome and Principe"},
+      {code: "SA", name: "Saudi Arabia"},
+      {code: "SN", name: "Senegal"},
+      {code: "RS", name: "Serbia"},
+      {code: "SC", name: "Seychelles"},
+      {code: "SL", name: "Sierra Leone"},
+      {code: "SG", name: "Singapore"},
+      {code: "SK", name: "Slovakia"},
+      {code: "SI", name: "Slovenia"},
+      {code: "SB", name: "Solomon Islands"},
+      {code: "SO", name: "Somalia"},
+      {code: "ZA", name: "South Africa"},
+      {code: "SS", name: "South Sudan"},
+      {code: "ES", name: "Spain"},
+      {code: "LK", name: "Sri Lanka"},
+      {code: "SD", name: "Sudan"},
+      {code: "SR", name: "Suriname"},
+      {code: "SE", name: "Sweden"},
+      {code: "CH", name: "Switzerland"},
+      {code: "SY", name: "Syria"},
+      {code: "TW", name: "Taiwan"},
+      {code: "TJ", name: "Tajikistan"},
+      {code: "TZ", name: "Tanzania"},
+      {code: "TH", name: "Thailand"},
+      {code: "TL", name: "Timor-Leste"},
+      {code: "TG", name: "Togo"},
+      {code: "TO", name: "Tonga"},
+      {code: "TT", name: "Trinidad and Tobago"},
+      {code: "TN", name: "Tunisia"},
+      {code: "TR", name: "Turkey"},
+      {code: "TM", name: "Turkmenistan"},
+      {code: "TV", name: "Tuvalu"},
+      {code: "UG", name: "Uganda"},
+      {code: "UA", name: "Ukraine"},
+      {code: "AE", name: "United Arab Emirates"},
+      {code: "GB", name: "United Kingdom"},
+      {code: "US", name: "United States"},
+      {code: "UY", name: "Uruguay"},
+      {code: "UZ", name: "Uzbekistan"},
+      {code: "VU", name: "Vanuatu"},
+      {code: "VA", name: "Vatican City"},
+      {code: "VE", name: "Venezuela"},
+      {code: "VN", name: "Vietnam"},
+      {code: "YE", name: "Yemen"},
+      {code: "ZM", name: "Zambia"},
+      {code: "ZW", name: "Zimbabwe"}
+    ];
+
+    // Initialize country dropdowns
+    function initializeCountrySelectors() {
+      const countrySelect = document.getElementById('countrySelect');
+      const countryChange = document.getElementById('countryChange');
+      
+      // Sort countries by name
+      countries.sort((a, b) => a.name.localeCompare(b.name));
+      
+      // Populate both dropdowns
+      countries.forEach(country => {
+        const option1 = document.createElement('option');
+        option1.value = country.code;
+        option1.textContent = country.name;
+        countrySelect.appendChild(option1);
+        
+        const option2 = document.createElement('option');
+        option2.value = country.code;
+        option2.textContent = country.name;
+        countryChange.appendChild(option2);
+      });
+    }
+
     // Show country modal if not set
     if (!userCountry) {
       document.getElementById('countryModal').style.display = 'flex';
@@ -624,6 +817,9 @@
       document.getElementById('countryInfo').textContent = `Country: ${getCountryName(userCountry)}`;
       document.getElementById('countryChange').value = userCountry;
     }
+
+    // Initialize country selectors
+    initializeCountrySelectors();
 
     // Initialize year options with default range 1800-2100
     const yearSelect = document.getElementById("yearSelect");
@@ -648,25 +844,8 @@
 
     // Function to get country name from code
     function getCountryName(countryCode) {
-      const countryNames = {
-        'US': 'United States',
-        'GB': 'United Kingdom',
-        'CA': 'Canada',
-        'AU': 'Australia',
-        'IN': 'India',
-        'DE': 'Germany',
-        'FR': 'France',
-        'JP': 'Japan',
-        'BR': 'Brazil',
-        'ZA': 'South Africa',
-        'MX': 'Mexico',
-        'IT': 'Italy',
-        'ES': 'Spain',
-        'KR': 'South Korea',
-        'CN': 'China',
-        'RU': 'Russia'
-      };
-      return countryNames[countryCode] || countryCode;
+      const country = countries.find(c => c.code === countryCode);
+      return country ? country.name : countryCode;
     }
 
     // Save country selection
@@ -702,7 +881,7 @@
     async function fetchGoogleCalendarEvents(year, month) {
       const API_KEY = 'AIzaSyA5ewt8gNixBDRh0MNZhNvQtaY0Rx6yjC4';
       // Using a public holidays calendar based on country
-      const CALENDAR_ID = `${userCountry.toLowerCase()}.${userCountry.toLowerCase()}#holiday@group.v.calendar.google.com`;
+      const CALENDAR_ID = `${userCountry.toLowerCase()}#holiday@group.v.calendar.google.com`;
       
       // Calculate time range for the month
       const timeMin = new Date(year, month, 1).toISOString();
@@ -727,30 +906,14 @@
       }
     }
 
-    // Generate mock events for demonstration
+    // Generate mock events for demonstration (only holidays, no meetings/appointments)
     function generateMockEvents(year, month) {
       const events = [];
-      const holidays = [
-        { name: "New Year's Day", month: 0, day: 1 },
-        { name: "Valentine's Day", month: 1, day: 14 },
-        { name: "St. Patrick's Day", month: 2, day: 17 },
-        { name: "April Fools' Day", month: 3, day: 1 },
-        { name: "Earth Day", month: 3, day: 22 },
-        { name: "Cinco de Mayo", month: 4, day: 5 },
-        { name: "Mother's Day", month: 4, day: 14 }, // Second Sunday in May
-        { name: "Memorial Day", month: 4, day: 29 }, // Last Monday in May
-        { name: "Father's Day", month: 5, day: 18 }, // Third Sunday in June
-        { name: "Independence Day", month: 6, day: 4 },
-        { name: "Labor Day", month: 8, day: 4 }, // First Monday in September
-        { name: "Halloween", month: 9, day: 31 },
-        { name: "Veterans Day", month: 10, day: 11 },
-        { name: "Thanksgiving", month: 10, day: 23 }, // Fourth Thursday in November
-        { name: "Christmas Eve", month: 11, day: 24 },
-        { name: "Christmas Day", month: 11, day: 25 },
-        { name: "New Year's Eve", month: 11, day: 31 }
+      
+      const commonHolidays = [
       ];
 
-      holidays.forEach(holiday => {
+      commonHolidays.forEach(holiday => {
         if (holiday.month === month) {
           const date = new Date(year, holiday.month, holiday.day);
           // Adjust for floating holidays
@@ -761,14 +924,6 @@
               date.setDate(date.getDate() + 1);
             }
             date.setDate(date.getDate() + 7); // Second Sunday
-          } else if (holiday.name === "Memorial Day") {
-            // Last Monday in May
-            date.setDate(1);
-            date.setMonth(5); // June
-            date.setDate(0); // Last day of May
-            while (date.getDay() !== 1) {
-              date.setDate(date.getDate() - 1);
-            }
           } else if (holiday.name === "Father's Day") {
             // Third Sunday in June
             date.setDate(1);
@@ -776,19 +931,6 @@
               date.setDate(date.getDate() + 1);
             }
             date.setDate(date.getDate() + 7); // Third Sunday
-          } else if (holiday.name === "Labor Day") {
-            // First Monday in September
-            date.setDate(1);
-            while (date.getDay() !== 1) {
-              date.setDate(date.getDate() + 1);
-            }
-          } else if (holiday.name === "Thanksgiving") {
-            // Fourth Thursday in November
-            date.setDate(1);
-            while (date.getDay() !== 4 || date.getDate() <= 21) {
-              date.setDate(date.getDate() + 1);
-            }
-            date.setDate(date.getDate() + 21); // Fourth Thursday
           }
 
           events.push({
@@ -799,20 +941,6 @@
           });
         }
       });
-
-      // Add some random events
-      for (let i = 0; i < 5; i++) {
-        const day = Math.floor(Math.random() * 28) + 1;
-        const eventTypes = ["Team Meeting", "Project Deadline", "Conference", "Birthday", "Appointment"];
-        const randomEvent = eventTypes[Math.floor(Math.random() * eventTypes.length)];
-        
-        events.push({
-          summary: randomEvent,
-          start: {
-            date: new Date(year, month, day).toISOString().split('T')[0]
-          }
-        });
-      }
 
       return events;
     }
@@ -828,11 +956,7 @@
         }
         eventsByDate[dateStr].push({
           name: event.summary,
-          isHoliday: event.summary.toLowerCase().includes('day') && 
-                    !event.summary.toLowerCase().includes('meeting') &&
-                    !event.summary.toLowerCase().includes('deadline') &&
-                    !event.summary.toLowerCase().includes('conference') &&
-                    !event.summary.toLowerCase().includes('appointment')
+          isHoliday: true // All events from the holiday calendar are holidays
         });
       });
       
@@ -934,10 +1058,10 @@
           const eventList = document.createElement("div");
           eventList.className = "event-list";
           
-          // Show events
+          // Show events (only holidays now)
           googleEvents[dateStr].forEach(event => {
             const eventItem = document.createElement("div");
-            eventItem.className = event.isHoliday ? "event-item holiday-item" : "event-item";
+            eventItem.className = "event-item holiday-item";
             eventItem.textContent = event.name;
             eventList.appendChild(eventItem);
           });
@@ -1019,7 +1143,7 @@
       
       let eventInfo = "";
       if (googleEvents[dateString]) {
-        eventInfo = `\n\nEvents on this day:\n${googleEvents[dateString].map(e => e.name).join('\n')}`;
+        eventInfo = `\n\nHolidays on this day:\n${googleEvents[dateString].map(e => e.name).join('\n')}`;
       }
       
       alert(`You selected: ${selectedDate.toLocaleDateString('en-US', options)}${eventInfo}`);
