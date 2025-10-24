@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Advanced Calendar with Google Integration</title>
+  <title>Advanced Monthly Calendar</title>
   <style>
     :root {
       --primary-color: #2e7d32;
@@ -19,6 +19,10 @@
       --saturday-color: #ff9800;
       --event-color: #4285f4;
       --hover-color: #e8f5e9;
+      --season-spring: #e8f5e9;
+      --season-summer: #fff3e0;
+      --season-autumn: #fbe9e7;
+      --season-winter: #e3f2fd;
     }
 
     * {
@@ -34,10 +38,11 @@
       line-height: 1.6;
       padding: 20px;
       min-height: 100vh;
+      transition: background 0.5s ease;
     }
 
     .container {
-      max-width: 1200px;
+      max-width: 1000px;
       margin: 0 auto;
       background-color: white;
       border-radius: 12px;
@@ -50,6 +55,7 @@
       color: var(--light-text);
       padding: 25px 20px;
       text-align: center;
+      position: relative;
     }
 
     h1 {
@@ -63,14 +69,66 @@
       opacity: 0.9;
     }
 
+    .country-info {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      background: rgba(255, 255, 255, 0.2);
+      padding: 8px 15px;
+      border-radius: 20px;
+      font-size: 0.9rem;
+    }
+
+    .calendar-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 20px;
+      background-color: var(--secondary-color);
+    }
+
+    .month-nav {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+
+    .nav-btn {
+      background-color: var(--primary-color);
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .nav-btn:hover {
+      background-color: var(--primary-dark);
+      transform: scale(1.1);
+    }
+
+    .current-month {
+      font-size: 1.8rem;
+      font-weight: 600;
+      color: var(--primary-dark);
+      min-width: 250px;
+      text-align: center;
+    }
+
     .controls {
-      padding: 25px 20px;
+      padding: 20px;
       background-color: var(--secondary-color);
       display: flex;
       flex-wrap: wrap;
       gap: 15px;
       align-items: center;
       justify-content: center;
+      border-top: 1px solid var(--border-color);
     }
 
     .control-group {
@@ -120,67 +178,35 @@
       transform: translateY(0);
     }
 
-    .current-date {
-      font-size: 1.2rem;
-      font-weight: 600;
-      color: var(--primary-dark);
-      text-align: center;
-      padding: 10px;
-      background-color: rgba(46, 125, 50, 0.1);
-      border-radius: 6px;
-      margin: 0 10px;
-    }
-
-    #calendar {
+    .calendar-container {
       padding: 20px;
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-      gap: 20px;
-    }
-
-    .month-container {
-      background-color: white;
-      border-radius: 10px;
-      overflow: hidden;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-      transition: transform 0.3s ease;
-    }
-
-    .month-container:hover {
-      transform: translateY(-5px);
-    }
-
-    .month-header {
-      background: linear-gradient(to right, var(--primary-color), var(--primary-light));
-      color: white;
-      padding: 12px;
-      text-align: center;
-      font-weight: 600;
-      font-size: 1.2rem;
+      transition: background 0.5s ease;
     }
 
     table {
       width: 100%;
       border-collapse: collapse;
+      margin: 0 auto;
     }
 
     th {
       background-color: var(--primary-light);
       color: white;
-      padding: 10px 5px;
+      padding: 15px 10px;
       font-weight: 600;
-      font-size: 0.9rem;
+      font-size: 1rem;
     }
 
     td {
       border: 1px solid var(--border-color);
-      padding: 10px 5px;
+      padding: 15px 10px;
       text-align: center;
       transition: all 0.2s ease;
       position: relative;
       cursor: pointer;
-      height: 60px;
+      height: 100px;
       vertical-align: top;
+      width: 14.28%;
     }
 
     td:hover {
@@ -227,11 +253,11 @@
 
     .event-indicator {
       position: absolute;
-      bottom: 2px;
+      bottom: 5px;
       left: 50%;
       transform: translateX(-50%);
-      width: 6px;
-      height: 6px;
+      width: 8px;
+      height: 8px;
       background-color: var(--event-color);
       border-radius: 50%;
     }
@@ -241,17 +267,23 @@
       font-size: 0.7rem;
       text-align: left;
       padding: 0 2px;
+      max-height: 50px;
+      overflow-y: auto;
     }
 
     .event-item {
       background-color: var(--event-color);
       color: white;
       border-radius: 3px;
-      padding: 1px 4px;
+      padding: 2px 5px;
       margin-bottom: 2px;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+    }
+
+    .holiday-item {
+      background-color: #ff6b6b;
     }
 
     .legend {
@@ -301,26 +333,8 @@
       background-color: var(--event-color);
     }
 
-    .year-generator {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      padding: 15px;
-      background-color: var(--secondary-color);
-      border-radius: 8px;
-      margin-top: 20px;
-    }
-
-    .year-input-group {
-      display: flex;
-      gap: 10px;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .year-input-group input {
-      width: 120px;
-      text-align: center;
+    .holiday-legend {
+      background-color: #ff6b6b;
     }
 
     .api-status {
@@ -347,6 +361,43 @@
       100% { opacity: 1; }
     }
 
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.5);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-content {
+      background-color: white;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+      max-width: 500px;
+      width: 90%;
+      text-align: center;
+    }
+
+    .modal h2 {
+      margin-bottom: 20px;
+      color: var(--primary-dark);
+    }
+
+    .country-select {
+      width: 100%;
+      padding: 12px;
+      margin-bottom: 20px;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      font-size: 1rem;
+    }
+
     footer {
       text-align: center;
       padding: 20px;
@@ -356,7 +407,29 @@
       margin-top: 20px;
     }
 
+    /* Seasonal backgrounds */
+    .spring {
+      background-color: var(--season-spring);
+    }
+
+    .summer {
+      background-color: var(--season-summer);
+    }
+
+    .autumn {
+      background-color: var(--season-autumn);
+    }
+
+    .winter {
+      background-color: var(--season-winter);
+    }
+
     @media (max-width: 768px) {
+      .calendar-header {
+        flex-direction: column;
+        gap: 15px;
+      }
+      
       .controls {
         flex-direction: column;
         align-items: stretch;
@@ -366,22 +439,75 @@
         width: 100%;
       }
       
-      #calendar {
-        grid-template-columns: 1fr;
+      td {
+        height: 80px;
+        padding: 10px 5px;
       }
       
-      .year-input-group {
-        flex-direction: column;
+      .event-list {
+        max-height: 40px;
       }
     }
   </style>
 </head>
 <body>
+  <div class="modal" id="countryModal">
+    <div class="modal-content">
+      <h2>Welcome to Advanced Calendar</h2>
+      <p>Please select your country to load relevant holidays:</p>
+      <select class="country-select" id="countrySelect">
+        <option value="">Select a country</option>
+        <option value="US">United States</option>
+        <option value="GB">United Kingdom</option>
+        <option value="CA">Canada</option>
+        <option value="AU">Australia</option>
+        <option value="IN">India</option>
+        <option value="DE">Germany</option>
+        <option value="FR">France</option>
+        <option value="JP">Japan</option>
+        <option value="BR">Brazil</option>
+        <option value="ZA">South Africa</option>
+        <option value="MX">Mexico</option>
+        <option value="IT">Italy</option>
+        <option value="ES">Spain</option>
+        <option value="KR">South Korea</option>
+        <option value="CN">China</option>
+        <option value="RU">Russia</option>
+      </select>
+      <button onclick="saveCountry()">Save & Continue</button>
+    </div>
+  </div>
+
   <div class="container">
     <header>
-      <h1>Advanced Calendar</h1>
-      <div class="subtitle">With Google Calendar Integration</div>
+      <h1>Advanced Monthly Calendar</h1>
+      <div class="subtitle">With country-specific holidays and seasonal themes</div>
+      <div class="country-info" id="countryInfo">Country: Not set</div>
     </header>
+    
+    <div class="calendar-header">
+      <div class="month-nav">
+        <button class="nav-btn" onclick="changeMonth(-1)">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+            <path fill-rule="evenodd" d="M11.354 1.646a.5.5 0 0 1 0 .708L5.707 8l5.647 5.646a.5.5 0 0 1-.708.708l-6-6a.5.5 0 0 1 0-.708l6-6a.5.5 0 0 1 .708 0z"/>
+          </svg>
+        </button>
+        <div class="current-month" id="currentMonth">January 2023</div>
+        <button class="nav-btn" onclick="changeMonth(1)">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+            <path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708z"/>
+          </svg>
+        </button>
+      </div>
+      
+      <button onclick="jumpToToday()">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+          <path d="M8 3.5a.5.5 0 0 0-1 0V9a.5.5 0 0 0 .252.434l3.5 2a.5.5 0 0 0 .496-.868L8 8.71V3.5z"/>
+          <path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16zm7-8A7 7 0 1 1 1 8a7 7 0 0 1 14 0z"/>
+        </svg>
+        Today
+      </button>
+    </div>
     
     <div class="controls">
       <div class="control-group">
@@ -408,36 +534,51 @@
       </div>
       
       <div class="control-group">
-        <label for="dateInput">Jump to Specific Date</label>
-        <input type="date" id="dateInput" onchange="jumpToDate()">
-      </div>
-      
-      <button onclick="jumpToToday()">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-          <path d="M8 3.5a.5.5 0 0 0-1 0V9a.5.5 0 0 0 .252.434l3.5 2a.5.5 0 0 0 .496-.868L8 8.71V3.5z"/>
-          <path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16zm7-8A7 7 0 1 1 1 8a7 7 0 0 1 14 0z"/>
-        </svg>
-        Today
-      </button>
-      
-      <div class="current-date" id="currentDateDisplay"></div>
-    </div>
-    
-    <div class="year-generator">
-      <h3>Generate Calendar for Additional Years</h3>
-      <div class="year-input-group">
-        <input type="number" id="newYearInput" placeholder="Enter year" min="1000" max="9999">
-        <button onclick="addYearToSelector()">Add Year to Calendar</button>
-      </div>
-      <p style="font-size: 0.9rem; text-align: center;">Default range: 1800-2100. Add any year between 1000-9999.</p>
-      
-      <div class="api-status">
-        <div class="status-indicator"></div>
-        <span>Google Calendar API: Active (Updates every 8 hours)</span>
+        <label for="countryChange">Change Country</label>
+        <select id="countryChange" onchange="changeCountry()">
+          <option value="US">United States</option>
+          <option value="GB">United Kingdom</option>
+          <option value="CA">Canada</option>
+          <option value="AU">Australia</option>
+          <option value="IN">India</option>
+          <option value="DE">Germany</option>
+          <option value="FR">France</option>
+          <option value="JP">Japan</option>
+          <option value="BR">Brazil</option>
+          <option value="ZA">South Africa</option>
+          <option value="MX">Mexico</option>
+          <option value="IT">Italy</option>
+          <option value="ES">Spain</option>
+          <option value="KR">South Korea</option>
+          <option value="CN">China</option>
+          <option value="RU">Russia</option>
+        </select>
       </div>
     </div>
     
-    <div id="calendar"></div>
+    <div class="api-status">
+      <div class="status-indicator"></div>
+      <span>Google Calendar API: Active (Updates every 8 hours)</span>
+    </div>
+    
+    <div class="calendar-container" id="calendarContainer">
+      <table>
+        <thead>
+          <tr>
+            <th>Sun</th>
+            <th>Mon</th>
+            <th>Tue</th>
+            <th>Wed</th>
+            <th>Thu</th>
+            <th>Fri</th>
+            <th>Sat</th>
+          </tr>
+        </thead>
+        <tbody id="calendarBody">
+          <!-- Calendar will be generated here -->
+        </tbody>
+      </table>
+    </div>
     
     <div class="legend">
       <div class="legend-item">
@@ -453,30 +594,36 @@
         <span>Saturday (Holiday)</span>
       </div>
       <div class="legend-item">
-        <div class="legend-color today-friday-legend"></div>
-        <span>Today (Friday)</span>
-      </div>
-      <div class="legend-item">
-        <div class="legend-color today-saturday-legend"></div>
-        <span>Today (Saturday)</span>
-      </div>
-      <div class="legend-item">
         <div class="legend-color event-legend"></div>
-        <span>Google Calendar Event</span>
+        <span>Event</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-color holiday-legend"></div>
+        <span>Holiday</span>
       </div>
     </div>
     
     <footer>
-      <p>Advanced Calendar &copy; 2023 | Friday and Saturday are highlighted as holidays | Google Calendar Integration Active</p>
+      <p>Advanced Monthly Calendar &copy; 2023 | Friday and Saturday are highlighted as holidays</p>
     </footer>
   </div>
 
   <script>
     const today = new Date();
+    let currentDate = new Date();
     let currentYear = today.getFullYear();
     let currentMonth = today.getMonth();
     let googleEvents = {};
     let updateInterval;
+    let userCountry = localStorage.getItem('userCountry') || '';
+
+    // Show country modal if not set
+    if (!userCountry) {
+      document.getElementById('countryModal').style.display = 'flex';
+    } else {
+      document.getElementById('countryInfo').textContent = `Country: ${getCountryName(userCountry)}`;
+      document.getElementById('countryChange').value = userCountry;
+    }
 
     // Initialize year options with default range 1800-2100
     const yearSelect = document.getElementById("yearSelect");
@@ -499,22 +646,67 @@
     // Set current month in month selector
     document.getElementById("monthSelect").value = today.getMonth();
 
-    // Update current date display
-    function updateCurrentDateDisplay() {
-      const options = { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' };
-      document.getElementById("currentDateDisplay").textContent = 
-        `Current Date: ${today.toLocaleDateString('en-US', options)}`;
+    // Function to get country name from code
+    function getCountryName(countryCode) {
+      const countryNames = {
+        'US': 'United States',
+        'GB': 'United Kingdom',
+        'CA': 'Canada',
+        'AU': 'Australia',
+        'IN': 'India',
+        'DE': 'Germany',
+        'FR': 'France',
+        'JP': 'Japan',
+        'BR': 'Brazil',
+        'ZA': 'South Africa',
+        'MX': 'Mexico',
+        'IT': 'Italy',
+        'ES': 'Spain',
+        'KR': 'South Korea',
+        'CN': 'China',
+        'RU': 'Russia'
+      };
+      return countryNames[countryCode] || countryCode;
+    }
+
+    // Save country selection
+    function saveCountry() {
+      const countrySelect = document.getElementById('countrySelect');
+      userCountry = countrySelect.value;
+      
+      if (!userCountry) {
+        alert('Please select a country');
+        return;
+      }
+      
+      localStorage.setItem('userCountry', userCountry);
+      document.getElementById('countryModal').style.display = 'none';
+      document.getElementById('countryInfo').textContent = `Country: ${getCountryName(userCountry)}`;
+      document.getElementById('countryChange').value = userCountry;
+      
+      // Generate calendar with new country
+      generateCalendar(currentYear, currentMonth);
+    }
+
+    // Change country
+    function changeCountry() {
+      userCountry = document.getElementById('countryChange').value;
+      localStorage.setItem('userCountry', userCountry);
+      document.getElementById('countryInfo').textContent = `Country: ${getCountryName(userCountry)}`;
+      
+      // Regenerate calendar with new country data
+      generateCalendar(currentYear, currentMonth);
     }
 
     // Function to fetch events from Google Calendar API
-    async function fetchGoogleCalendarEvents(year) {
+    async function fetchGoogleCalendarEvents(year, month) {
       const API_KEY = 'AIzaSyA5ewt8gNixBDRh0MNZhNvQtaY0Rx6yjC4';
-      // Using a public holidays calendar
-      const CALENDAR_ID = 'en.usa#holiday@group.v.calendar.google.com';
+      // Using a public holidays calendar based on country
+      const CALENDAR_ID = `${userCountry.toLowerCase()}.${userCountry.toLowerCase()}#holiday@group.v.calendar.google.com`;
       
-      // Calculate time range for the year
-      const timeMin = new Date(year, 0, 1).toISOString();
-      const timeMax = new Date(year, 11, 31).toISOString();
+      // Calculate time range for the month
+      const timeMin = new Date(year, month, 1).toISOString();
+      const timeMax = new Date(year, month + 1, 0).toISOString();
       
       try {
         const response = await fetch(
@@ -531,12 +723,12 @@
       } catch (error) {
         console.error('Error fetching Google Calendar events:', error);
         // Return mock data for demonstration
-        return generateMockEvents(year);
+        return generateMockEvents(year, month);
       }
     }
 
     // Generate mock events for demonstration
-    function generateMockEvents(year) {
+    function generateMockEvents(year, month) {
       const events = [];
       const holidays = [
         { name: "New Year's Day", month: 0, day: 1 },
@@ -559,56 +751,57 @@
       ];
 
       holidays.forEach(holiday => {
-        const date = new Date(year, holiday.month, holiday.day);
-        // Adjust for floating holidays
-        if (holiday.name === "Mother's Day") {
-          // Second Sunday in May
-          date.setDate(1); // Start from first day of month
-          while (date.getDay() !== 0 || date.getDate() <= 7) {
-            date.setDate(date.getDate() + 1);
+        if (holiday.month === month) {
+          const date = new Date(year, holiday.month, holiday.day);
+          // Adjust for floating holidays
+          if (holiday.name === "Mother's Day") {
+            // Second Sunday in May
+            date.setDate(1); // Start from first day of month
+            while (date.getDay() !== 0 || date.getDate() <= 7) {
+              date.setDate(date.getDate() + 1);
+            }
+            date.setDate(date.getDate() + 7); // Second Sunday
+          } else if (holiday.name === "Memorial Day") {
+            // Last Monday in May
+            date.setDate(1);
+            date.setMonth(5); // June
+            date.setDate(0); // Last day of May
+            while (date.getDay() !== 1) {
+              date.setDate(date.getDate() - 1);
+            }
+          } else if (holiday.name === "Father's Day") {
+            // Third Sunday in June
+            date.setDate(1);
+            while (date.getDay() !== 0 || date.getDate() <= 14) {
+              date.setDate(date.getDate() + 1);
+            }
+            date.setDate(date.getDate() + 7); // Third Sunday
+          } else if (holiday.name === "Labor Day") {
+            // First Monday in September
+            date.setDate(1);
+            while (date.getDay() !== 1) {
+              date.setDate(date.getDate() + 1);
+            }
+          } else if (holiday.name === "Thanksgiving") {
+            // Fourth Thursday in November
+            date.setDate(1);
+            while (date.getDay() !== 4 || date.getDate() <= 21) {
+              date.setDate(date.getDate() + 1);
+            }
+            date.setDate(date.getDate() + 21); // Fourth Thursday
           }
-          date.setDate(date.getDate() + 7); // Second Sunday
-        } else if (holiday.name === "Memorial Day") {
-          // Last Monday in May
-          date.setDate(1);
-          date.setMonth(5); // June
-          date.setDate(0); // Last day of May
-          while (date.getDay() !== 1) {
-            date.setDate(date.getDate() - 1);
-          }
-        } else if (holiday.name === "Father's Day") {
-          // Third Sunday in June
-          date.setDate(1);
-          while (date.getDay() !== 0 || date.getDate() <= 14) {
-            date.setDate(date.getDate() + 1);
-          }
-          date.setDate(date.getDate() + 7); // Third Sunday
-        } else if (holiday.name === "Labor Day") {
-          // First Monday in September
-          date.setDate(1);
-          while (date.getDay() !== 1) {
-            date.setDate(date.getDate() + 1);
-          }
-        } else if (holiday.name === "Thanksgiving") {
-          // Fourth Thursday in November
-          date.setDate(1);
-          while (date.getDay() !== 4 || date.getDate() <= 21) {
-            date.setDate(date.getDate() + 1);
-          }
-          date.setDate(date.getDate() + 21); // Fourth Thursday
-        }
 
-        events.push({
-          summary: holiday.name,
-          start: {
-            date: date.toISOString().split('T')[0]
-          }
-        });
+          events.push({
+            summary: holiday.name,
+            start: {
+              date: date.toISOString().split('T')[0]
+            }
+          });
+        }
       });
 
       // Add some random events
-      for (let i = 0; i < 10; i++) {
-        const month = Math.floor(Math.random() * 12);
+      for (let i = 0; i < 5; i++) {
         const day = Math.floor(Math.random() * 28) + 1;
         const eventTypes = ["Team Meeting", "Project Deadline", "Conference", "Birthday", "Appointment"];
         const randomEvent = eventTypes[Math.floor(Math.random() * eventTypes.length)];
@@ -633,226 +826,186 @@
         if (!eventsByDate[dateStr]) {
           eventsByDate[dateStr] = [];
         }
-        eventsByDate[dateStr].push(event.summary);
+        eventsByDate[dateStr].push({
+          name: event.summary,
+          isHoliday: event.summary.toLowerCase().includes('day') && 
+                    !event.summary.toLowerCase().includes('meeting') &&
+                    !event.summary.toLowerCase().includes('deadline') &&
+                    !event.summary.toLowerCase().includes('conference') &&
+                    !event.summary.toLowerCase().includes('appointment')
+        });
       });
       
       return eventsByDate;
     }
 
-    // Generate calendar
-    async function generateCalendar(year) {
-      const calendarDiv = document.getElementById("calendar");
-      calendarDiv.innerHTML = ""; // Clear previous calendar
+    // Get season based on month
+    function getSeason(month) {
+      if (month >= 2 && month <= 4) return 'spring';
+      if (month >= 5 && month <= 7) return 'summer';
+      if (month >= 8 && month <= 10) return 'autumn';
+      return 'winter';
+    }
 
-      // Fetch events from Google Calendar
-      const events = await fetchGoogleCalendarEvents(year);
-      googleEvents = processEvents(events);
+    // Apply seasonal theme
+    function applySeasonalTheme(month) {
+      const season = getSeason(month);
+      const calendarContainer = document.getElementById('calendarContainer');
+      
+      // Remove all season classes
+      calendarContainer.classList.remove('spring', 'summer', 'autumn', 'winter');
+      
+      // Add current season class
+      calendarContainer.classList.add(season);
+    }
 
-      const months = [
+    // Generate calendar for a specific month
+    async function generateCalendar(year, month) {
+      const calendarBody = document.getElementById("calendarBody");
+      calendarBody.innerHTML = ""; // Clear previous calendar
+
+      // Update current date
+      currentDate = new Date(year, month, 1);
+      currentYear = year;
+      currentMonth = month;
+
+      // Update month and year selectors
+      yearSelect.value = year;
+      document.getElementById("monthSelect").value = month;
+
+      // Update current month display
+      const monthNames = [
         "January", "February", "March", "April", "May", "June",
         "July", "August", "September", "October", "November", "December"
       ];
+      document.getElementById("currentMonth").textContent = `${monthNames[month]} ${year}`;
 
-      months.forEach((month, index) => {
-        const monthContainer = document.createElement("div");
-        monthContainer.className = "month-container";
-        monthContainer.id = `month-${index}`;
+      // Apply seasonal theme
+      applySeasonalTheme(month);
 
-        const monthHeader = document.createElement("div");
-        monthHeader.className = "month-header";
-        monthHeader.textContent = `${month} ${year}`;
-        monthContainer.appendChild(monthHeader);
+      // Fetch events from Google Calendar if country is set
+      if (userCountry) {
+        const events = await fetchGoogleCalendarEvents(year, month);
+        googleEvents = processEvents(events);
+      }
 
-        const table = document.createElement("table");
-        const thead = document.createElement("thead");
-        thead.innerHTML = `
-          <tr>
-            <th>Sun</th>
-            <th>Mon</th>
-            <th>Tue</th>
-            <th>Wed</th>
-            <th>Thu</th>
-            <th>Fri</th>
-            <th>Sat</th>
-          </tr>
-        `;
-        table.appendChild(thead);
+      const firstDay = new Date(year, month, 1).getDay();
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
 
-        const tbody = document.createElement("tbody");
-        const firstDay = new Date(year, index, 1).getDay();
-        const daysInMonth = new Date(year, index + 1, 0).getDate();
+      let row = document.createElement("tr");
+      
+      // Add empty cells for days before the first day of the month
+      for (let i = 0; i < firstDay; i++) {
+        const emptyCell = document.createElement("td");
+        emptyCell.className = "empty-cell";
+        row.appendChild(emptyCell);
+      }
 
-        let row = document.createElement("tr");
-        
-        // Add empty cells for days before the first day of the month
-        for (let i = 0; i < firstDay; i++) {
+      for (let day = 1; day <= daysInMonth; day++) {
+        const cell = document.createElement("td");
+        cell.innerHTML = `<div class="day-number">${day}</div>`;
+        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        cell.setAttribute("data-date", dateStr);
+
+        // Check if it's today
+        const isToday = 
+          year === today.getFullYear() &&
+          month === today.getMonth() &&
+          day === today.getDate();
+
+        // Check if it's Friday (5) or Saturday (6)
+        const dayOfWeek = new Date(year, month, day).getDay();
+        const isFriday = dayOfWeek === 5;
+        const isSaturday = dayOfWeek === 6;
+
+        // Apply appropriate classes
+        if (isToday) {
+          cell.classList.add("today");
+        }
+        if (isFriday) {
+          cell.classList.add("friday");
+        }
+        if (isSaturday) {
+          cell.classList.add("saturday");
+        }
+
+        // Add Google Calendar events if any
+        if (googleEvents[dateStr]) {
+          const eventList = document.createElement("div");
+          eventList.className = "event-list";
+          
+          // Show events
+          googleEvents[dateStr].forEach(event => {
+            const eventItem = document.createElement("div");
+            eventItem.className = event.isHoliday ? "event-item holiday-item" : "event-item";
+            eventItem.textContent = event.name;
+            eventList.appendChild(eventItem);
+          });
+          
+          cell.appendChild(eventList);
+          
+          // Add event indicator dot
+          const eventIndicator = document.createElement("div");
+          eventIndicator.className = "event-indicator";
+          cell.appendChild(eventIndicator);
+        }
+
+        // Add click event to select date
+        cell.addEventListener("click", function() {
+          selectDate(this.getAttribute("data-date"));
+        });
+
+        row.appendChild(cell);
+
+        // Start a new row after Saturday
+        if ((firstDay + day) % 7 === 0) {
+          calendarBody.appendChild(row);
+          row = document.createElement("tr");
+        }
+      }
+
+      // Add empty cells for remaining days in the last week
+      if (row.children.length > 0) {
+        const remainingCells = 7 - row.children.length;
+        for (let i = 0; i < remainingCells; i++) {
           const emptyCell = document.createElement("td");
           emptyCell.className = "empty-cell";
           row.appendChild(emptyCell);
         }
-
-        for (let day = 1; day <= daysInMonth; day++) {
-          const cell = document.createElement("td");
-          cell.textContent = day;
-          const dateStr = `${year}-${String(index + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-          cell.setAttribute("data-date", dateStr);
-
-          // Check if it's today
-          const isToday = 
-            year === today.getFullYear() &&
-            index === today.getMonth() &&
-            day === today.getDate();
-
-          // Check if it's Friday (5) or Saturday (6)
-          const dayOfWeek = new Date(year, index, day).getDay();
-          const isFriday = dayOfWeek === 5;
-          const isSaturday = dayOfWeek === 6;
-
-          // Apply appropriate classes
-          if (isToday) {
-            cell.classList.add("today");
-          }
-          if (isFriday) {
-            cell.classList.add("friday");
-          }
-          if (isSaturday) {
-            cell.classList.add("saturday");
-          }
-
-          // Add Google Calendar events if any
-          if (googleEvents[dateStr]) {
-            const eventList = document.createElement("div");
-            eventList.className = "event-list";
-            
-            // Show up to 2 events, with indicator for more
-            const eventsToShow = googleEvents[dateStr].slice(0, 2);
-            eventsToShow.forEach(eventName => {
-              const eventItem = document.createElement("div");
-              eventItem.className = "event-item";
-              eventItem.textContent = eventName;
-              eventList.appendChild(eventItem);
-            });
-            
-            // Add indicator if there are more events
-            if (googleEvents[dateStr].length > 2) {
-              const moreIndicator = document.createElement("div");
-              moreIndicator.className = "event-item";
-              moreIndicator.textContent = `+${googleEvents[dateStr].length - 2} more`;
-              eventList.appendChild(moreIndicator);
-            }
-            
-            cell.appendChild(eventList);
-            
-            // Add event indicator dot
-            const eventIndicator = document.createElement("div");
-            eventIndicator.className = "event-indicator";
-            cell.appendChild(eventIndicator);
-          }
-
-          // Add click event to select date
-          cell.addEventListener("click", function() {
-            selectDate(this.getAttribute("data-date"));
-          });
-
-          row.appendChild(cell);
-
-          // Start a new row after Saturday
-          if ((firstDay + day) % 7 === 0) {
-            tbody.appendChild(row);
-            row = document.createElement("tr");
-          }
-        }
-
-        // Add empty cells for remaining days in the last week
-        if (row.children.length > 0) {
-          const remainingCells = 7 - row.children.length;
-          for (let i = 0; i < remainingCells; i++) {
-            const emptyCell = document.createElement("td");
-            emptyCell.className = "empty-cell";
-            row.appendChild(emptyCell);
-          }
-          tbody.appendChild(row);
-        }
-
-        table.appendChild(tbody);
-        monthContainer.appendChild(table);
-        calendarDiv.appendChild(monthContainer);
-      });
-
-      updateCurrentDateDisplay();
+        calendarBody.appendChild(row);
+      }
     }
 
     function updateCalendar() {
       currentYear = parseInt(yearSelect.value);
-      generateCalendar(currentYear);
+      generateCalendar(currentYear, currentMonth);
     }
 
     function jumpToMonth() {
       const selectedMonth = parseInt(document.getElementById("monthSelect").value);
-      const element = document.getElementById(`month-${selectedMonth}`);
-      if (element) {
-        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        // Highlight the month header briefly
-        element.style.boxShadow = "0 0 0 3px var(--primary-color)";
-        setTimeout(() => {
-          element.style.boxShadow = "";
-        }, 2000);
-      }
+      currentMonth = selectedMonth;
+      generateCalendar(currentYear, currentMonth);
     }
 
-    function jumpToDate() {
-      const dateInput = document.getElementById("dateInput").value;
-      if (dateInput) {
-        const dateParts = dateInput.split("-");
-        const year = parseInt(dateParts[0]);
-        const month = parseInt(dateParts[1]) - 1; // Months are 0-indexed in JS
-        const day = parseInt(dateParts[2]);
-        
-        // Update year and month selectors
-        yearSelect.value = year;
-        document.getElementById("monthSelect").value = month;
-        
-        // Generate calendar for that year
-        generateCalendar(year);
-        
-        // Scroll to the specific month and highlight the date
-        setTimeout(() => {
-          const element = document.getElementById(`month-${month}`);
-          if (element) {
-            element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            
-            // Highlight the specific date
-            const dateCell = element.querySelector(`[data-date="${year}-${month+1}-${day}"]`);
-            if (dateCell) {
-              dateCell.style.backgroundColor = "var(--primary-light)";
-              dateCell.style.color = "white";
-              dateCell.style.fontWeight = "bold";
-              
-              // Reset after 3 seconds
-              setTimeout(() => {
-                dateCell.style.backgroundColor = "";
-                dateCell.style.color = "";
-                dateCell.style.fontWeight = "";
-              }, 3000);
-            }
-          }
-        }, 100);
+    function changeMonth(direction) {
+      currentMonth += direction;
+      
+      // Handle year boundaries
+      if (currentMonth < 0) {
+        currentMonth = 11;
+        currentYear--;
+      } else if (currentMonth > 11) {
+        currentMonth = 0;
+        currentYear++;
       }
+      
+      generateCalendar(currentYear, currentMonth);
     }
 
     function jumpToToday() {
-      yearSelect.value = today.getFullYear();
-      document.getElementById("monthSelect").value = today.getMonth();
-      document.getElementById("dateInput").value = today.toISOString().split('T')[0];
-      generateCalendar(today.getFullYear());
-      
-      // Scroll to current month
-      setTimeout(() => {
-        const element = document.getElementById(`month-${today.getMonth()}`);
-        if (element) {
-          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
-      }, 100);
+      currentYear = today.getFullYear();
+      currentMonth = today.getMonth();
+      generateCalendar(currentYear, currentMonth);
     }
 
     function selectDate(dateString) {
@@ -866,44 +1019,10 @@
       
       let eventInfo = "";
       if (googleEvents[dateString]) {
-        eventInfo = `\n\nEvents on this day:\n${googleEvents[dateString].join('\n')}`;
+        eventInfo = `\n\nEvents on this day:\n${googleEvents[dateString].map(e => e.name).join('\n')}`;
       }
       
       alert(`You selected: ${selectedDate.toLocaleDateString('en-US', options)}${eventInfo}`);
-    }
-
-    function addYearToSelector() {
-      const newYearInput = document.getElementById("newYearInput");
-      const newYear = parseInt(newYearInput.value);
-      
-      // Validate the year
-      if (isNaN(newYear) || newYear < 1000 || newYear > 9999) {
-        alert("Please enter a valid year between 1000 and 9999");
-        return;
-      }
-      
-      // Check if the year already exists in the selector
-      const existingYears = Array.from(yearSelect.options).map(option => parseInt(option.value));
-      if (existingYears.includes(newYear)) {
-        alert(`Year ${newYear} is already available in the calendar`);
-        return;
-      }
-      
-      // Add the new year to the selector
-      const option = document.createElement("option");
-      option.value = newYear;
-      option.textContent = newYear;
-      yearSelect.appendChild(option);
-      
-      // Select the new year and generate the calendar
-      yearSelect.value = newYear;
-      generateCalendar(newYear);
-      
-      // Clear the input field
-      newYearInput.value = "";
-      
-      // Show success message
-      alert(`Calendar for year ${newYear} has been added successfully!`);
     }
 
     // Set up automatic updates every 8 hours (3 times a day)
@@ -916,18 +1035,15 @@
       // Update every 8 hours (28,800,000 milliseconds)
       updateInterval = setInterval(() => {
         console.log("Auto-updating calendar data...");
-        generateCalendar(currentYear);
+        generateCalendar(currentYear, currentMonth);
       }, 28800000); // 8 hours in milliseconds
     }
 
-    // Generate the initial calendar
-    generateCalendar(today.getFullYear());
-    
-    // Set up auto updates
-    setupAutoUpdates();
-    
-    // Set today's date in the date input
-    document.getElementById("dateInput").value = today.toISOString().split('T')[0];
+    // Generate the initial calendar if country is set
+    if (userCountry) {
+      generateCalendar(today.getFullYear(), today.getMonth());
+      setupAutoUpdates();
+    }
   </script>
 </body>
 </html>
